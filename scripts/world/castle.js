@@ -649,7 +649,7 @@ export function Castle(worldDim, loader) {
 
     // objects
     for (const [name, params] of Object.entries(castleObjects)) {
-        loader.load(`/castleObjects/${name}.fbx`, function(object) {
+        loader.load(`/worlds/castle/${name}.fbx`, function(object) {
             params.forEach((params) => {
                 let instance = object.clone();
 

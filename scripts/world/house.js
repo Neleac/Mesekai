@@ -259,7 +259,7 @@ export function House(worldDim, loader) {
 
     // objects
     for (const [name, params] of Object.entries(houseObjects)) {
-        loader.load(`/houseObjects/${name}.fbx`, function(object) {
+        loader.load(`/worlds/house/${name}.fbx`, function(object) {
             params.forEach((params) => {
                 let instance = object.clone();
 
@@ -272,7 +272,7 @@ export function House(worldDim, loader) {
     }
 
     // Skull model
-    loader.load(`/houseObjects/Skull.fbx`, function(object){
+    loader.load(`/worlds/house/Skull.fbx`, function(object){
         object.position.set(-440, 275, 100);
         object.rotateY(Math.PI/2);
         object.rotateX(Math.PI/-6);
@@ -280,7 +280,7 @@ export function House(worldDim, loader) {
     });
 
     // Necklace3 model
-    loader.load(`/houseObjects/Necklace3.fbx`, function(object){
+    loader.load(`/worlds/house/Necklace3.fbx`, function(object){
         object.position.set(-435, 95, -230);
         object.scale.set(1/2, 1/2, 1/2);
         object.rotateY(Math.PI/2);
@@ -289,7 +289,7 @@ export function House(worldDim, loader) {
     });
 
     // Ring6 model
-    loader.load(`/houseObjects/Ring6.fbx`, function(object){
+    loader.load(`/worlds/house/Ring6.fbx`, function(object){
         object.position.set(-455, 95, -230);
         object.scale.set(1/6, 1/6, 1/6);
         object.rotateY(Math.PI/4);

@@ -182,7 +182,7 @@ const amColor = 0x37425B;
 const skyColor = 0x182030;
 const groundColor = 0x808080;
 
-export function SpaceStation(worldDim, loader) {
+export function Space(worldDim, loader) {
     let world = new THREE.Object3D();
 
     const posMax = worldDim / 2;    // world bounds
@@ -210,7 +210,7 @@ export function SpaceStation(worldDim, loader) {
 
     // objects
     for (const [name, params] of Object.entries(spaceObjects)) {
-        loader.load(`/spaceObjects/${name}.fbx`, function(object) {
+        loader.load(`/worlds/space/${name}.fbx`, function(object) {
             params.forEach((params) => {
                 let instance = object.clone();
 

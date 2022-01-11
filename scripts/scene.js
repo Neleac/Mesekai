@@ -6,7 +6,7 @@ import { Avatar } from './avatar';
 import { Grid } from './world/grid';
 import { Forest } from './world/forest';
 import { Castle } from './world/castle';
-import { SpaceStation } from './world/spaceStation';
+import { Space } from './world/space';
 import { House } from './world/house';
 
 const canvasWidthOffset = 0.833;
@@ -70,7 +70,7 @@ export async function init(canvas, currUser) {
     // world
     switch (worldName) {
         case "space station":
-            [world, skyColor] = SpaceStation(worldDim, loader);
+            [world, skyColor] = Space(worldDim, loader);
             break;
         case "house":
             [world, skyColor] = House(worldDim, loader);
@@ -132,7 +132,7 @@ export async function updateWorld(name) {
 
         switch (name) {
             case "space station":
-                [world, skyColor] = SpaceStation(worldDim, loader);
+                [world, skyColor] = Space(worldDim, loader);
                 break;
             case "house":
                 [world, skyColor] = House(worldDim, loader);

@@ -89,7 +89,7 @@ export function Forest(worldDim, loader) {
 
     // objects
     for (const [name, params] of Object.entries(forestObjects)) {
-        loader.load(`/forestObjects/${name}.fbx`, function(object) {
+        loader.load(`/worlds/forest/${name}.fbx`, function(object) {
             for (var i = 0; i <= params.number; i++) {
                 let instance = object.clone();
 
