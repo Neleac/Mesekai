@@ -63,7 +63,7 @@ const bios = [
 export default function MembersPage() {
     return (
         <div id="members">
-            <div id="Title">Meet the Team!</div>
+            <div id="Title">Meet the Team</div>
             <Carousel autoplay autoplaySpeed={10000} style={{ display: "block" }}>
             {bios.map((bios) => {
                 return (

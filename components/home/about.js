@@ -7,12 +7,13 @@ export default function AboutPage(){
             <Row>
                 <Col span={12}>
                     <h1>
-                        About Mesekai
+                        About Us
                     </h1>
-                    <p>The Mesekai team comes from a diverse background of technical experience and passions. We are web, database, user interface, computer graphics, 
-                        and videogame designers and developers. We are excited about the prospect of entering a fantasy world built by our own ingenuity and imagination. 
-                        Mesekai aims to build a holistic experience that will convince users of the value of interactions within a virtual world. In the grand scheme, 
-                        it is a first step towards the eventual symbiosis of physical and virtual identities, of biological and artificial sentience.
+                    <p>Mesekai is a real-time 3D virtual avatar and world web application. Users can select from a list of avatar and world presets
+                       for their digital persona and environment. Avatar limbs, fingers, and facial expressions are controlled by the user's physical
+                       body through webcam video. The app is built using MediaPipe, Three.js, and React. The Mesekai team comes from a diverse background 
+                       of technical experience and passions. We are web, database, user interface, computer graphics, and videogame designers and developers. 
+                       We are excited about the prospect of entering a fantasy world built by our own ingenuity and imagination.
                     </p>
                 </Col>
                 <Col span={12}>

@@ -14,7 +14,7 @@ export default function PageHeader() {
                     </div>
                     <Link href="/#base" title="Home" />
                     <Link href="/#about" title="About" />
-                    <Link href="/#members" title="Dev Team" />
+                    <Link href="/#members" title="Team" />
                 </Anchor>
             </div>
         </Header>
