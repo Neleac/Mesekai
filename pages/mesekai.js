@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { Button, Row, Col, Spin, Tabs } from "antd";
-
-import { init, animate, updateAvatar, updateWorld } from "../scripts/scene";
 import { LoadingOutlined } from '@ant-design/icons';
-import { PoseDetector } from "../scripts/mediapipe";
+
 import styles from '../styles/Mesekai.module.css'
+import { init, animate, updateAvatar, updateWorld } from "../scripts/scene";
+import { PoseDetector } from "../scripts/mediapipe";
 
 const { TabPane } = Tabs;
 const antIcon = <LoadingOutlined style={{ fontSize: 36 }} spin />;
@@ -15,7 +15,10 @@ export default function Avatar() {
     const videoInput = useRef();
 
     useEffect(() => {
-        let currUser = sessionStorage.getItem('user');
+        // TODO: get authenticated user
+        //let currUser = sessionStorage.getItem('user');
+        let currUser = null;
+
         init(canvas.current, currUser);
         animate();
 

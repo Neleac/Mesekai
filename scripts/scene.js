@@ -38,30 +38,30 @@ export async function init(canvas, currUser) {
     scene = new THREE.Scene();
     loader = new FBXLoader();
 
-    // TODO: use database fields for initial avatar and world
     let avatarName = "ybot";
     let worldName = "grid";
 
-    if (currUser) {
-        user = currUser;
-        const res = await fetch('api/get-avatar', {
-            method: 'POST',
-            body: currUser,
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
+    // TODO: use database fields for initial avatar and world
+    // if (currUser) {
+    //     user = currUser;
+    //     const res = await fetch('api/get-avatar', {
+    //         method: 'POST',
+    //         body: currUser,
+    //         headers: {
+    //             "Content-Type": "application/json",
+    //         },
+    //     });
 
-        if (res.status != 200) {
-            alert("Get user info failure.");
-        }
+    //     if (res.status != 200) {
+    //         alert("Get user info failure.");
+    //     }
 
-        const data = await res.json();
-        if (data.msg === "User Found!") {
-            avatarName = data.body.avatar;
-            worldName = data.body.world;
-        }
-    }
+    //     const data = await res.json();
+    //     if (data.msg === "User Found!") {
+    //         avatarName = data.body.avatar;
+    //         worldName = data.body.world;
+    //     }
+    // }
 
     // avatar
     avatar = await Avatar(avatarName, loader);
