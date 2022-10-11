@@ -3,8 +3,8 @@ import { Button, Row, Col, Spin, Tabs } from "antd";
 import { LoadingOutlined } from '@ant-design/icons';
 
 import styles from '../styles/Mesekai.module.css'
-import { init, animate, updateAvatar, updateWorld } from "../scripts/scene";
-import { PoseDetector } from "../scripts/mediapipe";
+import { init, animate, updateAvatar, updateWorld } from "../src/scene";
+import { PoseDetector } from "../src/mediapipe";
 
 const { TabPane } = Tabs;
 const antIcon = <LoadingOutlined style={{ fontSize: 36 }} spin />;
