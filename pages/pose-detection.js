@@ -48,24 +48,11 @@ export default function PoseDetection() {
             height: 720
         });
         camera.start();
-        console.log(camera);
 
-        // clicking back button throws
-        // TypeError: Cannot read properties of null (reading 'width')
-        // maybe need to do something more here?
         return function cleanup() {
-            holistic.close();
-
-            const tracks = camera.video.srcObject.getTracks();
-            tracks.forEach(function(track) {
-                track.stop();
-            });
-            camera.video.srcObject = null;
-
-            // piece of sht doesnt work
-            // https://github.com/google/mediapipe/issues/1606
-            // camera.stop()
-        }
+            detector.close();
+            camera.stop();
+        };
     });
 
     return (

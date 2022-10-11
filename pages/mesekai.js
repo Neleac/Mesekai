@@ -29,21 +29,9 @@ export default function Avatar() {
 
         camera.start();
 
-        // clicking back button throws
-        // TypeError: Cannot read properties of null (reading 'width')
-        // maybe need to do something more here?
         return function cleanup() {
             detector.close();
-
-            const tracks = camera.video.srcObject.getTracks();
-            tracks.forEach(function (track) {
-            track.stop();
-            });
-            camera.video.srcObject = null;
-
-            // piece of sht doesnt work
-            // https://github.com/google/mediapipe/issues/1606
-            // camera.stop()
+            camera.stop();
         };
     });
 
