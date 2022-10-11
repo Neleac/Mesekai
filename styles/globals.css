@@ -78,7 +78,7 @@ a {
 }
 
 .header .ant-anchor-wrapper {
-    overflow: auto;
+    overflow: hidden;
     margin-right: 0px;
     padding-right: 200vh;
     width: 1vh;
@@ -282,6 +282,7 @@ div .ant-carousel {
 
 #carousel-container div {
     background-color: white;
+    border-radius: 20px;
 }
 
 #carousel-container h3 {

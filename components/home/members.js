@@ -64,12 +64,13 @@ export default function MembersPage() {
     return (
         <div id="members">
             <div id="Title">Meet the Team</div>
-            <Carousel autoplay autoplaySpeed={10000} style={{ display: "block" }}>
+            <Carousel style={{ display: "block" }}>
             {bios.map((bios) => {
                 return (
                 <div id="carousel-container" key={bios.key}>
+                    <br></br>
                     <h1>{bios.memberName}</h1>
-                    <h2>({bios.memberRole})</h2>
+                    <br></br>
                     <h3>
                         <Image
                             src={`/team/${bios.key}.jpg`}
