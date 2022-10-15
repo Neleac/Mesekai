@@ -12,3 +12,11 @@ Mesekai is a real-time motion tracking virtual avatar and world web application.
 
 ## Unity Version
 [MesekaiUnity repo](https://github.com/Neleac/MesekaiUnity)
+
+## Run the Code
+This project was built using [NEXT.js](https://nextjs.org). In the project directory:
+```
+npm install
+npm run dev
+```
+Navigate to the localhost URL in browser to view the result.
