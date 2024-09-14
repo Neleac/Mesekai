@@ -7,7 +7,7 @@ export default function Landing() {
             <div id="Title">Mesekai</div>
             <div id="desc"> Webcam Motion Tracking Virtual Avatars</div>
             <div id="button-middle">
-                <Image src="/misc/homepage.png" width="1276px" height="859px"/>
+                <Image src="/misc/homepage.png" width="1276" height="859" alt="homepage"/>
                 <Button type="primary" size={"large"} href="/mesekai">
                     Enter
                 </Button>

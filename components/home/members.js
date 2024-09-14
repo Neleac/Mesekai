@@ -75,8 +75,8 @@ export default function MembersPage() {
                         <Image
                             src={`/team/${bios.key}.jpg`}
                             alt="member-pictures"
-                            width="400%"
-                            height="400%"
+                            width={225}
+                            height={225}
                         />
                     </h3>
                     <p>{bios.memberBio}</p>

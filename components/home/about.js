@@ -16,7 +16,8 @@ export default function AboutPage(){
                     </p>
                 </Col>
                 <Col span={12}>
-                    <Image src="/misc/mediapipe.gif" width="687.5vh" height="386.25vh" alt="mesekai-about"/>
+                    <Image src="/misc/mediapipe.gif"width={687} height={386}
+                        alt="mesekai-about"/>
                 </Col>
             </Row>
         </div>  
