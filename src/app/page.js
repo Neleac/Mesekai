@@ -1,101 +1,85 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useRef } from "react";
+import { Camera } from "@mediapipe/camera_utils";
+import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
+import { Holistic, POSE_CONNECTIONS, FACEMESH_TESSELATION, HAND_CONNECTIONS } from "@mediapipe/holistic";
+import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    // face landmark model for blendshapes
+    let faceLandmarker;
+    async function createFaceLandmarker() {
+        const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                delegate: "GPU"
+            },
+            outputFaceBlendshapes: true,
+            runningMode: "VIDEO",
+            numFaces: 1
+        });
+    }
+    createFaceLandmarker();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    // holistic landmark model for body and hands
+    const holistic = new Holistic({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+    }});
+    holistic.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    const video = useRef(null);
+    const canvas = useRef(null);
+    useEffect(() => {
+        // draw pose estimation results
+        const canvasCtx = canvas.current.getContext('2d');
+        holistic.onResults((result) => {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height);
+            canvasCtx.drawImage(result.image, 0, 0, canvas.current.width, canvas.current.height);
+            drawConnectors(canvasCtx, result.poseLandmarks, POSE_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
+            drawLandmarks(canvasCtx, result.poseLandmarks, {color: '#FF0000', lineWidth: 2});
+            drawConnectors(canvasCtx, result.faceLandmarks, FACEMESH_TESSELATION, {color: '#C0C0C070', lineWidth: 1});
+            drawConnectors(canvasCtx, result.leftHandLandmarks, HAND_CONNECTIONS, {color: '#CC0000', lineWidth: 5});
+            drawLandmarks(canvasCtx, result.leftHandLandmarks, {color: '#00FF00', lineWidth: 2});
+            drawConnectors(canvasCtx, result.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00CC00', lineWidth: 5});
+            drawLandmarks(canvasCtx, result.rightHandLandmarks, {color: '#FF0000', lineWidth: 2});
+            canvasCtx.restore();
+        });
+
+        let lastVideoTime = -1;
+        const camera = new Camera(video.current, {
+            onFrame: async () => {
+                if (faceLandmarker && lastVideoTime != video.current.currentTime) {
+                    lastVideoTime = video.current.currentTime;
+
+                    await holistic.send({image: video.current});
+
+                    const faceResult = faceLandmarker.detectForVideo(video.current, performance.now());
+                    console.log(faceResult);
+                }
+            },
+            width: 1280,
+            height: 720
+        });
+        camera.start();
+
+        return function cleanup() {
+            camera.stop();
+            if (faceLandmarker) {
+                faceLandmarker.close();
+            }
+        };
+    });
+
+    return (<>
+        <video hidden ref={video} width="1280px" height="720px"></video>
+        <canvas ref={canvas} width="1280px" height="720px"></canvas>
+    </>);
 }

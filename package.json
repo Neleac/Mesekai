@@ -9,14 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/holistic": "^0.5.1675471629",
+    "@mediapipe/tasks-vision": "^0.10.15",
+    "next": "14.2.11",
     "react": "^18",
-    "react-dom": "^18",
-    "next": "14.2.11"
+    "react-dom": "^18"
   },
   "devDependencies": {
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
     "eslint": "^8",
-    "eslint-config-next": "14.2.11"
+    "eslint-config-next": "14.2.11",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1"
   }
 }
