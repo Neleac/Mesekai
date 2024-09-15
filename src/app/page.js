@@ -13,9 +13,9 @@ const CAM_HEIGHT = 720, CAM_WIDTH = 1280;
 export default function Home() {
     // avatar
     // const { nodes, materials } = useGLTF('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
-    // const { nodes, materials } = useGLTF('/avatar.glb');
-    // console.log(nodes);
-    // const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
+    const { nodes, materials } = useGLTF('/avatar.glb');
+    console.log(nodes);
+    const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
 
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
@@ -70,29 +70,28 @@ export default function Home() {
                         if (result) {
                             if (result.faceLandmarks) {
                                 for (const landmarks of result.faceLandmarks) {
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: '#C0C0C070', lineWidth: 1 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: 'cyan' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, { color: 'cyan' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: 'cyan' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, { color: 'cyan' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: '#E0E0E0' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: 'cyan' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, { color: 'cyan' });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, { color: 'cyan' });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: '#C0C0C070', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: '#E0E0E0', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
+                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
                                 }
                             }
 
-                            // if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
-                            //     const blendshapes = result.faceBlendshapes[0].categories;
-                            //     blendshapes.forEach(blendshape => {
-                            //         meshes.forEach(mesh => {
-                            //             const blenshapeIdx = mesh.morphTargetDictionary[blendshape['categoryName']];
-                            //             if (blenshapeIdx) {
-                            //                 mesh.morphTargetInfluences[blenshapeIdx] = blendshape['score'];
-                            //             }
-                            //         });
-                            //     });
-                            // }
+                            if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
+                                for (const blendshape of result.faceBlendshapes[0].categories) {
+                                    for (const mesh of meshes) {
+                                        const blenshapeIdx = mesh.morphTargetDictionary[blendshape['categoryName']];
+                                        if (blenshapeIdx) {
+                                            mesh.morphTargetInfluences[blenshapeIdx] = blendshape['score'];
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -100,8 +99,8 @@ export default function Home() {
                         const result = poseTracker.detectForVideo(video.current, performance.now());
                         if (result) {
                             for (const landmark of result.landmarks) {
-                                drawingUtils.drawLandmarks(landmark, {radius: (data) => DrawingUtils.lerp(data.from.z, -0.15, 0.1, 5, 1)});
-                                drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS);
+                                drawingUtils.drawLandmarks(landmark, {radius: CAM_HEIGHT / 1000});
+                                drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { lineWidth: CAM_HEIGHT / 1000 });
                             }
                         }
                     }
@@ -110,8 +109,8 @@ export default function Home() {
                         const result = handTracker.detectForVideo(video.current, performance.now());
                         if (result) {
                             for (const landmark of result.landmarks) {
-                                drawingUtils.drawLandmarks(landmark, {radius: (data) => DrawingUtils.lerp(data.from.z, -0.15, 0.1, 5, 1), color: 'green'});
-                                drawingUtils.drawConnectors(landmark, HandLandmarker.HAND_CONNECTIONS, { color: 'lime' });
+                                drawingUtils.drawLandmarks(landmark, {color: 'green', radius: CAM_HEIGHT / 1000 });
+                                drawingUtils.drawConnectors(landmark, HandLandmarker.HAND_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 1000 });
                             }
                         }
                     }
@@ -139,21 +138,16 @@ export default function Home() {
     });
 
     return (
-        <div style={{ position: 'relative' }}>
-            <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT}></video>
-            <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0 }}></canvas>
+        <div style={{ display: 'flex' }}>
+            <div style={{ position: 'relative', width: CAM_WIDTH, height: CAM_HEIGHT }}>
+                <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ width: '100%', width: '100%'  }}></video>
+                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', width: '100%' }}></canvas>
+            </div>
+            <Canvas style={{ width: '100vw', height: '100vh' }} >
+                <ambientLight intensity={0.1} />
+                <directionalLight position={[0, 0, 1]} />
+                <primitive object={nodes.Scene} position={[0, -7.5, 0]} scale={[5, 5, 5]} />
+            </Canvas>
         </div>
     );
-
-    // return (<>
-    //     <video ref={video} width='640px' height='360px'></video>
-    //     <canvas hidden ref={canvas} width='640px' height='360px'></canvas>
-    //     <div style={{ width: '50vw', height: '50vh' }}>
-    //         <Canvas>
-    //             <ambientLight intensity={0.1} />
-    //             <directionalLight position={[0, 0, 1]} />
-    //             <primitive object={nodes.Scene} position={[0, -17.5, 0]} scale={[10, 10, 10]} />
-    //         </Canvas>
-    //     </div>
-    // </>);
 }
