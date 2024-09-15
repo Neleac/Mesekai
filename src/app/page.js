@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useGLTF } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
-
 import { Camera } from '@mediapipe/camera_utils';
 import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
+import { useEffect, useRef } from 'react';
+import { useGLTF, OrbitControls } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import { Euler, Matrix4 } from 'three';
 
 const DEVICE = 'GPU';
 const CAM_HEIGHT = 720, CAM_WIDTH = 1280;
@@ -28,7 +28,8 @@ export default function Home() {
                 delegate: DEVICE
             },
             runningMode: 'VIDEO',
-            outputFaceBlendshapes: true
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: true
         });
 
         poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
@@ -82,6 +83,7 @@ export default function Home() {
                                 }
                             }
 
+                            // facial expressions
                             if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
                                 for (const blendshape of result.faceBlendshapes[0].categories) {
                                     for (const mesh of meshes) {
@@ -91,6 +93,15 @@ export default function Home() {
                                         }
                                     }
                                 }
+                            }
+
+                            // head rotation
+                            if (result.facialTransformationMatrixes && result.facialTransformationMatrixes.length > 0) {
+                                const matrix = new Matrix4().fromArray(result.facialTransformationMatrixes[0].data);
+                                const rotation = new Euler().setFromRotationMatrix(matrix);
+                                nodes.Head.rotation.set(rotation.x, rotation.y, rotation.z);
+                                nodes.Neck.rotation.set(rotation.x / 5, rotation.y / 5, rotation.z / 5);
+                                nodes.Spine2.rotation.set(rotation.x / 10, rotation.y / 10, rotation.z / 10);
                             }
                         }
                     }
@@ -144,6 +155,7 @@ export default function Home() {
                 <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', width: '100%' }}></canvas>
             </div>
             <Canvas style={{ width: '100vw', height: '100vh' }} >
+                <OrbitControls />
                 <ambientLight intensity={0.1} />
                 <directionalLight position={[0, 0, 1]} />
                 <primitive object={nodes.Scene} position={[0, -7.5, 0]} scale={[5, 5, 5]} />
