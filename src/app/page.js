@@ -5,32 +5,44 @@ import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver, Drawin
 import { useEffect, useRef } from 'react';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Euler, Matrix4 } from 'three';
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 
 const DEVICE = 'GPU';
 const CAM_HEIGHT = 720, CAM_WIDTH = 1280;
+
+// landmark indiceS
+const LEFTSHOULDER = 11;
+const RIGHTSHOULDER = 12;
+const LEFTELBOW = 13;
+const RIGHTELBOW = 14;
+const LEFTWRIST = 15;
+const RIGHTWRIST = 16;
+const LEFTFINGER = 19;
+const RIGHTFINGER = 20;
+const LEFTHIP = 23;
+const RIGHTHIP = 24;
 
 export default function Home() {
     // avatar
     // const { nodes, materials } = useGLTF('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
     const { nodes, materials } = useGLTF('/avatar.glb');
-    console.log(nodes);
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
+    console.log(nodes);
 
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
     async function createTrackers() {
         const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
         
-        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: 'VIDEO',
-            outputFaceBlendshapes: true,
-            outputFacialTransformationMatrixes: true
-        });
+        // faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        //     baseOptions: {
+        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        //         delegate: DEVICE
+        //     },
+        //     runningMode: 'VIDEO',
+        //     outputFaceBlendshapes: true,
+        //     outputFacialTransformationMatrixes: true
+        // });
 
         poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -40,14 +52,14 @@ export default function Home() {
             runningMode: 'VIDEO'
         });
 
-        handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: 'VIDEO',
-            numHands: 2
-        });
+        // handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
+        //     baseOptions: {
+        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        //         delegate: DEVICE
+        //     },
+        //     runningMode: 'VIDEO',
+        //     numHands: 2
+        // });
     }
     createTrackers();
 
@@ -108,10 +120,33 @@ export default function Home() {
 
                     if (poseTracker) {
                         const result = poseTracker.detectForVideo(video.current, performance.now());
+                        //console.log(result);
                         if (result) {
                             for (const landmark of result.landmarks) {
                                 drawingUtils.drawLandmarks(landmark, {radius: CAM_HEIGHT / 1000});
                                 drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { lineWidth: CAM_HEIGHT / 1000 });
+                            }
+
+                            if (result.worldLandmarks && result.worldLandmarks.length > 0) {
+                                let lShoulderLm = new Vector3(-result.worldLandmarks[0][LEFTSHOULDER].x, -result.worldLandmarks[0][LEFTSHOULDER].y, -result.worldLandmarks[0][LEFTSHOULDER].z);
+                                let rShoulderLm = new Vector3(-result.worldLandmarks[0][RIGHTSHOULDER].x, -result.worldLandmarks[0][RIGHTSHOULDER].y, -result.worldLandmarks[0][RIGHTSHOULDER].z);
+                                let lElbowLm = new Vector3(-result.worldLandmarks[0][LEFTELBOW].x, -result.worldLandmarks[0][LEFTELBOW].y, -result.worldLandmarks[0][LEFTELBOW].z);
+                                let lHipLm = new Vector3(-result.worldLandmarks[0][LEFTHIP].x, -result.worldLandmarks[0][LEFTHIP].y, -result.worldLandmarks[0][LEFTHIP].z);
+                                let rHipLm = new Vector3(-result.worldLandmarks[0][RIGHTHIP].x, -result.worldLandmarks[0][RIGHTHIP].y, -result.worldLandmarks[0][RIGHTHIP].z);
+
+                                let v_spineLm = lShoulderLm.clone().add(rShoulderLm).divideScalar(2).sub(lHipLm.clone().add(rHipLm).divideScalar(2)).normalize();
+                                let spine1TfPos = new Vector3(), spine2TfPos = new Vector3();
+                                nodes.Spine1.getWorldPosition(spine1TfPos);
+                                nodes.Spine2.getWorldPosition(spine2TfPos);
+                                const v_spineTf = spine2TfPos.sub(spine1TfPos).normalize();
+
+                                let rot = new Quaternion().setFromUnitVectors(v_spineLm, v_spineTf);
+                                v_spineLm.applyQuaternion(rot);
+                                let v_lBicepLm = lElbowLm.clone().sub(lShoulderLm).normalize();
+                                v_lBicepLm.applyQuaternion(rot);
+                                rot.setFromUnitVectors(v_spineLm, v_lBicepLm);
+                                rot = nodes.RightShoulder.quaternion.clone().invert().multiply(rot);
+                                nodes.RightArm.quaternion.slerp(rot, 0.5);
                             }
                         }
                     }
@@ -151,8 +186,8 @@ export default function Home() {
     return (
         <div style={{ display: 'flex' }}>
             <div style={{ position: 'relative', width: CAM_WIDTH, height: CAM_HEIGHT }}>
-                <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ width: '100%', width: '100%'  }}></video>
-                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', width: '100%' }}></canvas>
+                <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ width: '100%', width: '100%', transform: 'scaleX(-1)' }}></video>
+                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', width: '100%', transform: 'scaleX(-1)' }}></canvas>
             </div>
             <Canvas style={{ width: '100vw', height: '100vh' }} >
                 <OrbitControls />
