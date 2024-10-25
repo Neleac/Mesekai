@@ -5,22 +5,44 @@ import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver, Drawin
 import { useEffect, useRef } from 'react';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { Euler, Matrix4, Quaternion, Vector3, Matrix3 } from 'three';
 
 const DEVICE = 'GPU';
 const CAM_HEIGHT = 720, CAM_WIDTH = 1280;
 
 // landmark indiceS
-const LEFTSHOULDER = 11;
-const RIGHTSHOULDER = 12;
-const LEFTELBOW = 13;
-const RIGHTELBOW = 14;
-const LEFTWRIST = 15;
-const RIGHTWRIST = 16;
-const LEFTFINGER = 19;
-const RIGHTFINGER = 20;
-const LEFTHIP = 23;
-const RIGHTHIP = 24;
+const lSHOULDER = 11;
+const rSHOULDER = 12;
+const lELBOW = 13;
+const rELBOW = 14;
+const lWRIST = 15;
+const rWRIST = 16;
+const lPINKY = 17;
+const rPINKY = 18;
+const lINDEX = 19;
+const rINDEX = 20;
+const lHIP = 23;
+const rHIP = 24;
+
+const SMOOTHING = 0.5;
+
+function rotateBone(userJoint, userChild, avatarChild, basis) {
+    // change of basis: world -> local
+    let userLimb = userChild.clone().sub(userJoint).applyMatrix3(basis.invert()).normalize();
+    let avatarLimb = avatarChild.clone().normalize();
+    return new Quaternion().setFromUnitVectors(avatarLimb, userLimb);
+}
+
+function updateBasis(rotation, xAxis, yAxis, zAxis, basis) {
+    xAxis.applyQuaternion(rotation);
+    yAxis.applyQuaternion(rotation);
+    zAxis.applyQuaternion(rotation);
+    basis.set(
+        xAxis.x, yAxis.x, zAxis.x,
+        xAxis.y, yAxis.y, zAxis.y,
+        xAxis.z, yAxis.z, zAxis.z
+    );
+}
 
 export default function Home() {
     // avatar
@@ -28,6 +50,8 @@ export default function Home() {
     const { nodes, materials } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
+
+    nodes.RightShoulder.quaternion.identity();
 
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
@@ -81,6 +105,7 @@ export default function Home() {
                     if (faceTracker) {
                         const result = faceTracker.detectForVideo(video.current, performance.now());
                         if (result) {
+                            // video overlay
                             if (result.faceLandmarks) {
                                 for (const landmarks of result.faceLandmarks) {
                                     drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: '#C0C0C070', lineWidth: CAM_HEIGHT / 1000 });
@@ -120,33 +145,49 @@ export default function Home() {
 
                     if (poseTracker) {
                         const result = poseTracker.detectForVideo(video.current, performance.now());
-                        //console.log(result);
                         if (result) {
+                            // video overlay
                             for (const landmark of result.landmarks) {
                                 drawingUtils.drawLandmarks(landmark, {radius: CAM_HEIGHT / 1000});
-                                drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { lineWidth: CAM_HEIGHT / 1000 });
+                                drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 500 });
                             }
 
+                            // solve pose
                             if (result.worldLandmarks && result.worldLandmarks.length > 0) {
-                                let lShoulderLm = new Vector3(-result.worldLandmarks[0][LEFTSHOULDER].x, -result.worldLandmarks[0][LEFTSHOULDER].y, -result.worldLandmarks[0][LEFTSHOULDER].z);
-                                let rShoulderLm = new Vector3(-result.worldLandmarks[0][RIGHTSHOULDER].x, -result.worldLandmarks[0][RIGHTSHOULDER].y, -result.worldLandmarks[0][RIGHTSHOULDER].z);
-                                let lElbowLm = new Vector3(-result.worldLandmarks[0][LEFTELBOW].x, -result.worldLandmarks[0][LEFTELBOW].y, -result.worldLandmarks[0][LEFTELBOW].z);
-                                let lHipLm = new Vector3(-result.worldLandmarks[0][LEFTHIP].x, -result.worldLandmarks[0][LEFTHIP].y, -result.worldLandmarks[0][LEFTHIP].z);
-                                let rHipLm = new Vector3(-result.worldLandmarks[0][RIGHTHIP].x, -result.worldLandmarks[0][RIGHTHIP].y, -result.worldLandmarks[0][RIGHTHIP].z);
+                                // reset avatar pose
+                                //nodes.RightArm.quaternion.identity();
+                                
+                                // cache landmarks
+                                const landmarks = [];
+                                for (const worldLandmark of result.worldLandmarks[0]) {
+                                    landmarks.push(new Vector3(worldLandmark.x, worldLandmark.y, worldLandmark.z).negate());
+                                }
 
-                                let v_spineLm = lShoulderLm.clone().add(rShoulderLm).divideScalar(2).sub(lHipLm.clone().add(rHipLm).divideScalar(2)).normalize();
-                                let spine1TfPos = new Vector3(), spine2TfPos = new Vector3();
-                                nodes.Spine1.getWorldPosition(spine1TfPos);
-                                nodes.Spine2.getWorldPosition(spine2TfPos);
-                                const v_spineTf = spine2TfPos.sub(spine1TfPos).normalize();
+                                let shoulderX = landmarks[rSHOULDER].clone().sub(landmarks[lSHOULDER]).normalize();
+                                let shoulderY = landmarks[rSHOULDER].clone().lerp(landmarks[lSHOULDER], 0.5).normalize();
+                                let shoulderZ = shoulderX.clone().cross(shoulderY).normalize();
+                        
+                                // left arm
+                                let xAxis = shoulderX.clone();
+                                let yAxis = shoulderY.clone();
+                                let zAxis = shoulderZ.clone();
+                                let basis = new Matrix3(
+                                    xAxis.x, yAxis.x, zAxis.x,
+                                    xAxis.y, yAxis.y, zAxis.y,
+                                    xAxis.z, yAxis.z, zAxis.z
+                                );
+                        
+                                let rot = rotateBone(landmarks[lSHOULDER], landmarks[lELBOW], nodes.RightForeArm.position, basis);
+                                nodes.RightArm.quaternion.slerp(rot, SMOOTHING);
+                                updateBasis(nodes.RightArm.quaternion, xAxis, yAxis, zAxis, basis);
 
-                                let rot = new Quaternion().setFromUnitVectors(v_spineLm, v_spineTf);
-                                v_spineLm.applyQuaternion(rot);
-                                let v_lBicepLm = lElbowLm.clone().sub(lShoulderLm).normalize();
-                                v_lBicepLm.applyQuaternion(rot);
-                                rot.setFromUnitVectors(v_spineLm, v_lBicepLm);
-                                rot = nodes.RightShoulder.quaternion.clone().invert().multiply(rot);
-                                nodes.RightArm.quaternion.slerp(rot, 0.5);
+                                rot = rotateBone(landmarks[lELBOW], landmarks[lWRIST], nodes.RightHand.position, basis);
+                                nodes.RightForeArm.quaternion.slerp(rot, SMOOTHING);
+                                updateBasis(nodes.RightForeArm.quaternion, xAxis, yAxis, zAxis, basis);
+
+                                let lFingersLm = landmarks[lPINKY].lerp(landmarks[lINDEX], 0.5);
+                                rot = rotateBone(landmarks[lWRIST], lFingersLm, nodes.RightHandMiddle1.position, basis);
+                                nodes.RightHand.quaternion.slerp(rot, SMOOTHING);
                             }
                         }
                     }
