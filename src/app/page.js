@@ -7,10 +7,12 @@ import { useGLTF, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { Euler, Matrix4, Quaternion, Vector3, Matrix3 } from 'three';
 
+// hardware configuration
 const DEVICE = 'GPU';
-const CAM_HEIGHT = 720, CAM_WIDTH = 1280;
+const CAM_HEIGHT = 720;
+const CAM_WIDTH = 1280;
 
-// landmark indiceS
+// landmark indices
 const lSHOULDER = 11;
 const rSHOULDER = 12;
 const lELBOW = 13;
@@ -21,27 +23,37 @@ const lPINKY = 17;
 const rPINKY = 18;
 const lINDEX = 19;
 const rINDEX = 20;
-const lHIP = 23;
-const rHIP = 24;
 
 const SMOOTHING = 0.5;
 
-function rotateBone(userJoint, userChild, avatarChild, basis) {
-    // change of basis: world -> local
-    let userLimb = userChild.clone().sub(userJoint).applyMatrix3(basis.invert()).normalize();
-    let avatarLimb = avatarChild.clone().normalize();
-    return new Quaternion().setFromUnitVectors(avatarLimb, userLimb);
-}
-
-function updateBasis(rotation, xAxis, yAxis, zAxis, basis) {
-    xAxis.applyQuaternion(rotation);
-    yAxis.applyQuaternion(rotation);
-    zAxis.applyQuaternion(rotation);
-    basis.set(
+function createAxes(axes, xAxis, yAxis, zAxis, fromShoulderLm, toShoulderLm) {
+    yAxis.copy(toShoulderLm.clone().sub(fromShoulderLm).normalize());
+    zAxis.copy(toShoulderLm.clone().lerp(fromShoulderLm, 0.5).negate().normalize());
+    xAxis.copy(yAxis.clone().cross(zAxis).normalize());
+    axes.set(
         xAxis.x, yAxis.x, zAxis.x,
         xAxis.y, yAxis.y, zAxis.y,
         xAxis.z, yAxis.z, zAxis.z
     );
+}
+
+function updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld) {
+    rotWorld.setFromUnitVectors(yAxis, userLimbWorld);
+    xAxis.applyQuaternion(rotWorld);
+    yAxis.applyQuaternion(rotWorld);
+    zAxis.applyQuaternion(rotWorld);
+    axes.set(
+        xAxis.x, yAxis.x, zAxis.x,
+        xAxis.y, yAxis.y, zAxis.y,
+        xAxis.z, yAxis.z, zAxis.z
+    );
+}
+
+function solveRotation(avatarBone, parentLm, childLm, userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes) {
+    userLimbWorld.copy(childLm.clone().sub(parentLm)).normalize();
+    userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
+    rotLocal.setFromUnitVectors(avatarLimbLocal, userLimbLocal);
+    avatarBone.quaternion.slerp(rotLocal, SMOOTHING);
 }
 
 export default function Home() {
@@ -50,8 +62,6 @@ export default function Home() {
     const { nodes, materials } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
-
-    nodes.RightShoulder.quaternion.identity();
 
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
@@ -153,41 +163,37 @@ export default function Home() {
                             }
 
                             // solve pose
-                            if (result.worldLandmarks && result.worldLandmarks.length > 0) {
-                                // reset avatar pose
-                                //nodes.RightArm.quaternion.identity();
-                                
+                            if (result.worldLandmarks && result.worldLandmarks.length > 0) {                               
                                 // cache landmarks
                                 const landmarks = [];
                                 for (const worldLandmark of result.worldLandmarks[0]) {
                                     landmarks.push(new Vector3(worldLandmark.x, worldLandmark.y, worldLandmark.z).negate());
                                 }
+                                landmarks[lINDEX].lerp(landmarks[lPINKY], 0.5);
+                                landmarks[rINDEX].lerp(landmarks[rPINKY], 0.5);
 
-                                let shoulderX = landmarks[rSHOULDER].clone().sub(landmarks[lSHOULDER]).normalize();
-                                let shoulderY = landmarks[rSHOULDER].clone().lerp(landmarks[lSHOULDER], 0.5).normalize();
-                                let shoulderZ = shoulderX.clone().cross(shoulderY).normalize();
-                        
-                                // left arm
-                                let xAxis = shoulderX.clone();
-                                let yAxis = shoulderY.clone();
-                                let zAxis = shoulderZ.clone();
-                                let basis = new Matrix3(
-                                    xAxis.x, yAxis.x, zAxis.x,
-                                    xAxis.y, yAxis.y, zAxis.y,
-                                    xAxis.z, yAxis.z, zAxis.z
-                                );
-                        
-                                let rot = rotateBone(landmarks[lSHOULDER], landmarks[lELBOW], nodes.RightForeArm.position, basis);
-                                nodes.RightArm.quaternion.slerp(rot, SMOOTHING);
-                                updateBasis(nodes.RightArm.quaternion, xAxis, yAxis, zAxis, basis);
+                                // cache transforms to avoid reallocation
+                                const axes = new Matrix3();
+                                const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
+                                const rotWorld = new Quaternion(), rotLocal = new Quaternion();
+                                const userLimbWorld = new Vector3(), userLimbLocal = new Vector3();
+                                const avatarLimbLocal = new Vector3(0, 1, 0);
 
-                                rot = rotateBone(landmarks[lELBOW], landmarks[lWRIST], nodes.RightHand.position, basis);
-                                nodes.RightForeArm.quaternion.slerp(rot, SMOOTHING);
-                                updateBasis(nodes.RightForeArm.quaternion, xAxis, yAxis, zAxis, basis);
+                                // user left arm, avatar right arm
+                                createAxes(axes, xAxis, yAxis, zAxis, landmarks[rSHOULDER], landmarks[lSHOULDER])
+                                solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
+                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
+                                solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
+                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
+                                solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
 
-                                let lFingersLm = landmarks[lPINKY].lerp(landmarks[lINDEX], 0.5);
-                                rot = rotateBone(landmarks[lWRIST], lFingersLm, nodes.RightHandMiddle1.position, basis);
-                                nodes.RightHand.quaternion.slerp(rot, SMOOTHING);
+                                // user right arm, avatar left arm
+                                createAxes(axes, xAxis, yAxis, zAxis, landmarks[lSHOULDER], landmarks[rSHOULDER])
+                                solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
+                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
+                                solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
+                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
+                                solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
                             }
                         }
                     }
