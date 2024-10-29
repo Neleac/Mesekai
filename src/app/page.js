@@ -24,9 +24,15 @@ const rPINKY = 18;
 const lINDEX = 19;
 const rINDEX = 20;
 
+const WRIST = 0;
+const INDEX = 5;
+const MIDDLE = 9;
+const RING = 13;
+const PINKY = 17;
+
 const SMOOTHING = 0.5;
 
-function createAxes(axes, xAxis, yAxis, zAxis, fromShoulderLm, toShoulderLm) {
+function createPoseAxes(axes, xAxis, yAxis, zAxis, fromShoulderLm, toShoulderLm) {
     yAxis.copy(toShoulderLm.clone().sub(fromShoulderLm).normalize());
     zAxis.copy(toShoulderLm.clone().lerp(fromShoulderLm, 0.5).negate().normalize());
     xAxis.copy(yAxis.clone().cross(zAxis).normalize());
@@ -63,37 +69,41 @@ export default function Home() {
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
 
+    nodes.RightHandIndex1.rotation.set(0, 0, 0);
+
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
     async function createTrackers() {
         const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
         
-        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: 'VIDEO',
-            outputFaceBlendshapes: true,
-            outputFacialTransformationMatrixes: true
-        });
-
-        poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-                delegate: DEVICE
-            },
-            runningMode: 'VIDEO'
-        });
-
-        // handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
+        // faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
         //     baseOptions: {
-        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
         //         delegate: DEVICE
         //     },
         //     runningMode: 'VIDEO',
-        //     numHands: 2
+        //     outputFaceBlendshapes: true,
+        //     outputFacialTransformationMatrixes: true
         // });
+
+        // poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
+        //     baseOptions: {
+        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+        //         delegate: DEVICE
+        //     },
+        //     runningMode: 'VIDEO'
+        // });
+
+        handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+                delegate: DEVICE
+            },
+            runningMode: 'VIDEO',
+            numHands: 2,
+            min_hand_detection_confidence: 0.95,
+            min_hand_presence_confidence: 0.95
+        });
     }
     createTrackers();
 
@@ -189,7 +199,7 @@ export default function Home() {
                                 const avatarLimbLocal = new Vector3(0, 1, 0);
 
                                 // user left arm, avatar right arm
-                                createAxes(axes, xAxis, yAxis, zAxis, landmarks[rSHOULDER], landmarks[lSHOULDER])
+                                createPoseAxes(axes, xAxis, yAxis, zAxis, landmarks[rSHOULDER], landmarks[lSHOULDER])
                                 solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
                                 updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
                                 solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
@@ -197,7 +207,7 @@ export default function Home() {
                                 solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
 
                                 // user right arm, avatar left arm
-                                createAxes(axes, xAxis, yAxis, zAxis, landmarks[lSHOULDER], landmarks[rSHOULDER])
+                                createPoseAxes(axes, xAxis, yAxis, zAxis, landmarks[lSHOULDER], landmarks[rSHOULDER])
                                 solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
                                 updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
                                 solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
@@ -210,9 +220,51 @@ export default function Home() {
                     if (handTracker) {
                         const result = handTracker.detectForVideo(video.current, performance.now());
                         if (result) {
+                            // video overlay
                             for (const landmark of result.landmarks) {
                                 drawingUtils.drawLandmarks(landmark, {color: 'green', radius: CAM_HEIGHT / 1000 });
                                 drawingUtils.drawConnectors(landmark, HandLandmarker.HAND_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 1000 });
+                            }
+
+                            // cache transforms to avoid reallocation
+                            const axes = new Matrix3();
+                            const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
+                            const rotWorld = new Quaternion(), rotLocal = new Quaternion();
+                            const userLimbWorld = new Vector3(), userLimbLocal = new Vector3();
+                            const avatarLimbLocal = new Vector3(0, 1, 0);
+
+                            for (let handIdx = 0; handIdx < result.handedness.length; handIdx++) {
+                                const landmarks = [];
+                                for (const worldLandmark of result.worldLandmarks[handIdx]) {
+                                    landmarks.push(new Vector3(worldLandmark.x, worldLandmark.y, worldLandmark.z).negate());
+                                }
+
+                                if (result.handedness[handIdx][0]["categoryName"] == 'Left') {
+                                    xAxis.copy(landmarks[INDEX].clone().sub(landmarks[MIDDLE]).normalize());
+                                    yAxis.copy(landmarks[INDEX].clone().sub(landmarks[WRIST]).normalize());
+                                    zAxis.copy(xAxis.clone().cross(yAxis).normalize());
+                                    axes.set(
+                                        xAxis.x, yAxis.x, zAxis.x,
+                                        xAxis.y, yAxis.y, zAxis.y,
+                                        xAxis.z, yAxis.z, zAxis.z
+                                    );
+
+                                    let avatarBone = nodes.RightHandIndex1;
+                                    for (let jointIdx = INDEX; ; jointIdx++) {
+
+                                        userLimbWorld.copy(landmarks[jointIdx + 1].clone().sub(landmarks[jointIdx]).normalize());
+                                        userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
+                                        rotLocal.setFromUnitVectors(new Vector3(0, 1, 0), userLimbLocal);
+                                        avatarBone.quaternion.slerp(rotLocal, SMOOTHING);
+
+                                        if (jointIdx == INDEX + 2) {
+                                            break;
+                                        }
+
+                                        avatarBone = avatarBone.children[0];
+                                        updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld)
+                                    }
+                                } 
                             }
                         }
                     }
