@@ -68,15 +68,15 @@ export default function Home() {
     async function createTrackers() {
         const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
         
-        // faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        //     baseOptions: {
-        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-        //         delegate: DEVICE
-        //     },
-        //     runningMode: 'VIDEO',
-        //     outputFaceBlendshapes: true,
-        //     outputFacialTransformationMatrixes: true
-        // });
+        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+                delegate: DEVICE
+            },
+            runningMode: 'VIDEO',
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: true
+        });
 
         poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -133,8 +133,17 @@ export default function Home() {
                             // facial expressions
                             if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
                                 for (const blendshape of result.faceBlendshapes[0].categories) {
+                                    // mirror left and right
+                                    let blendshapeName = blendshape['categoryName'];
+                                    if (blendshapeName.endsWith('Left')) {
+                                        blendshapeName = blendshapeName.slice(0, -4) + 'Right';
+                                    } else if (blendshapeName.endsWith('Right')) {
+                                        blendshapeName = blendshapeName.slice(0, -5) + 'Left';
+                                    }
+
+                                    // apply to all affected meshes (e.g. face, teeth, etc.)
                                     for (const mesh of meshes) {
-                                        const blenshapeIdx = mesh.morphTargetDictionary[blendshape['categoryName']];
+                                        const blenshapeIdx = mesh.morphTargetDictionary[blendshapeName];
                                         if (blenshapeIdx) {
                                             mesh.morphTargetInfluences[blenshapeIdx] = blendshape['score'];
                                         }
@@ -146,9 +155,9 @@ export default function Home() {
                             if (result.facialTransformationMatrixes && result.facialTransformationMatrixes.length > 0) {
                                 const matrix = new Matrix4().fromArray(result.facialTransformationMatrixes[0].data);
                                 const rotation = new Euler().setFromRotationMatrix(matrix);
-                                nodes.Head.rotation.set(rotation.x, rotation.y, rotation.z);
-                                nodes.Neck.rotation.set(rotation.x / 5, rotation.y / 5, rotation.z / 5);
-                                nodes.Spine2.rotation.set(rotation.x / 10, rotation.y / 10, rotation.z / 10);
+                                nodes.Head.rotation.set(rotation.x, -rotation.y, -rotation.z);
+                                nodes.Neck.rotation.set(rotation.x / 5, -rotation.y / 5, -rotation.z / 5);
+                                nodes.Spine2.rotation.set(rotation.x / 10, -rotation.y / 10, -rotation.z / 10);
                             }
                         }
                     }
@@ -162,7 +171,7 @@ export default function Home() {
                                 drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 500 });
                             }
 
-                            // solve pose
+                            // solve and apply pose
                             if (result.worldLandmarks && result.worldLandmarks.length > 0) {                               
                                 // cache landmarks
                                 const landmarks = [];
