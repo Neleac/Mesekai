@@ -32,9 +32,16 @@ const PINKY = 17;
 
 const SMOOTHING = 0.5;
 
-function createPoseAxes(axes, xAxis, yAxis, zAxis, fromShoulderLm, toShoulderLm) {
-    yAxis.copy(toShoulderLm.clone().sub(fromShoulderLm).normalize());
-    zAxis.copy(toShoulderLm.clone().lerp(fromShoulderLm, 0.5).negate().normalize());
+// cache transforms to avoid reallocation
+const axes = new Matrix3();
+const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
+const rotWorld = new Quaternion(), rotLocal = new Quaternion();
+const userLimbWorld = new Vector3(), userLimbLocal = new Vector3();
+const avatarLimbLocal = new Vector3(0, 1, 0);
+
+function createPoseAxes(landmarkFrom, landmarkTo) {
+    yAxis.copy(landmarkTo.clone().sub(landmarkFrom).normalize());
+    zAxis.copy(landmarkTo.clone().lerp(landmarkFrom, 0.5).negate().normalize());
     xAxis.copy(yAxis.clone().cross(zAxis).normalize());
     axes.set(
         xAxis.x, yAxis.x, zAxis.x,
@@ -43,7 +50,7 @@ function createPoseAxes(axes, xAxis, yAxis, zAxis, fromShoulderLm, toShoulderLm)
     );
 }
 
-function updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld) {
+function updateAxes() {
     rotWorld.setFromUnitVectors(yAxis, userLimbWorld);
     xAxis.applyQuaternion(rotWorld);
     yAxis.applyQuaternion(rotWorld);
@@ -55,11 +62,29 @@ function updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld) {
     );
 }
 
-function solveRotation(avatarBone, parentLm, childLm, userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes) {
+function solveRotation(avatarBone, parentLm, childLm) {
     userLimbWorld.copy(childLm.clone().sub(parentLm)).normalize();
     userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
     rotLocal.setFromUnitVectors(avatarLimbLocal, userLimbLocal);
     avatarBone.quaternion.slerp(rotLocal, SMOOTHING);
+}
+
+function solveFinger(avatarBone, landmarkIdx, landmarks) {
+    zAxis.copy(xAxis.clone().cross(yAxis).normalize());
+    axes.set(
+        xAxis.x, yAxis.x, zAxis.x,
+        xAxis.y, yAxis.y, zAxis.y,
+        xAxis.z, yAxis.z, zAxis.z
+    );
+
+    for (let jointIdx = landmarkIdx; ; jointIdx++) {
+        solveRotation(avatarBone, landmarks[jointIdx], landmarks[jointIdx + 1]);
+        if (jointIdx == landmarkIdx + 2) {
+            break;
+        }
+        avatarBone = avatarBone.children[0];
+        updateAxes();
+    }
 }
 
 export default function Home() {
@@ -68,9 +93,7 @@ export default function Home() {
     const { nodes, materials } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
-
-    nodes.RightHandIndex1.rotation.set(0, 0, 0);
-
+    
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
     async function createTrackers() {
@@ -86,13 +109,13 @@ export default function Home() {
         //     outputFacialTransformationMatrixes: true
         // });
 
-        // poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
-        //     baseOptions: {
-        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-        //         delegate: DEVICE
-        //     },
-        //     runningMode: 'VIDEO'
-        // });
+        poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+                delegate: DEVICE
+            },
+            runningMode: 'VIDEO'
+        });
 
         handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -191,28 +214,21 @@ export default function Home() {
                                 landmarks[lINDEX].lerp(landmarks[lPINKY], 0.5);
                                 landmarks[rINDEX].lerp(landmarks[rPINKY], 0.5);
 
-                                // cache transforms to avoid reallocation
-                                const axes = new Matrix3();
-                                const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
-                                const rotWorld = new Quaternion(), rotLocal = new Quaternion();
-                                const userLimbWorld = new Vector3(), userLimbLocal = new Vector3();
-                                const avatarLimbLocal = new Vector3(0, 1, 0);
-
                                 // user left arm, avatar right arm
-                                createPoseAxes(axes, xAxis, yAxis, zAxis, landmarks[rSHOULDER], landmarks[lSHOULDER])
-                                solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
-                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
-                                solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
-                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
-                                solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
+                                createPoseAxes(landmarks[rSHOULDER], landmarks[lSHOULDER])
+                                solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW]);
+                                updateAxes();
+                                solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST]);
+                                updateAxes();
+                                solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX]);
 
                                 // user right arm, avatar left arm
-                                createPoseAxes(axes, xAxis, yAxis, zAxis, landmarks[lSHOULDER], landmarks[rSHOULDER])
-                                solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
-                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
-                                solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
-                                updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld);
-                                solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX], userLimbWorld, userLimbLocal, avatarLimbLocal, rotLocal, axes);
+                                createPoseAxes(landmarks[lSHOULDER], landmarks[rSHOULDER])
+                                solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW]);
+                                updateAxes();
+                                solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST]);
+                                updateAxes();
+                                solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX]);
                             }
                         }
                     }
@@ -226,14 +242,9 @@ export default function Home() {
                                 drawingUtils.drawConnectors(landmark, HandLandmarker.HAND_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 1000 });
                             }
 
-                            // cache transforms to avoid reallocation
-                            const axes = new Matrix3();
-                            const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
-                            const rotWorld = new Quaternion(), rotLocal = new Quaternion();
-                            const userLimbWorld = new Vector3(), userLimbLocal = new Vector3();
-                            const avatarLimbLocal = new Vector3(0, 1, 0);
-
+                            // solve and apply hands
                             for (let handIdx = 0; handIdx < result.handedness.length; handIdx++) {
+                                // cache landmarks
                                 const landmarks = [];
                                 for (const worldLandmark of result.worldLandmarks[handIdx]) {
                                     landmarks.push(new Vector3(worldLandmark.x, worldLandmark.y, worldLandmark.z).negate());
@@ -242,29 +253,36 @@ export default function Home() {
                                 if (result.handedness[handIdx][0]["categoryName"] == 'Left') {
                                     xAxis.copy(landmarks[INDEX].clone().sub(landmarks[MIDDLE]).normalize());
                                     yAxis.copy(landmarks[INDEX].clone().sub(landmarks[WRIST]).normalize());
-                                    zAxis.copy(xAxis.clone().cross(yAxis).normalize());
-                                    axes.set(
-                                        xAxis.x, yAxis.x, zAxis.x,
-                                        xAxis.y, yAxis.y, zAxis.y,
-                                        xAxis.z, yAxis.z, zAxis.z
-                                    );
+                                    solveFinger(nodes.RightHandIndex1, INDEX, landmarks);
+                        
+                                    xAxis.copy(landmarks[INDEX].clone().sub(landmarks[MIDDLE]).normalize());
+                                    yAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.RightHandMiddle1, MIDDLE, landmarks);
 
-                                    let avatarBone = nodes.RightHandIndex1;
-                                    for (let jointIdx = INDEX; ; jointIdx++) {
+                                    xAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[RING]).normalize());
+                                    yAxis.copy(landmarks[RING].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.RightHandRing1, RING, landmarks);
 
-                                        userLimbWorld.copy(landmarks[jointIdx + 1].clone().sub(landmarks[jointIdx]).normalize());
-                                        userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
-                                        rotLocal.setFromUnitVectors(new Vector3(0, 1, 0), userLimbLocal);
-                                        avatarBone.quaternion.slerp(rotLocal, SMOOTHING);
+                                    xAxis.copy(landmarks[RING].clone().sub(landmarks[PINKY]).normalize());
+                                    yAxis.copy(landmarks[PINKY].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.RightHandPinky1, PINKY, landmarks);
+                                } else {
+                                    xAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[INDEX]).normalize());
+                                    yAxis.copy(landmarks[INDEX].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.LeftHandIndex1, INDEX, landmarks);
+                        
+                                    xAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[INDEX]).normalize());
+                                    yAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.LeftHandMiddle1, MIDDLE, landmarks);
 
-                                        if (jointIdx == INDEX + 2) {
-                                            break;
-                                        }
+                                    xAxis.copy(landmarks[RING].clone().sub(landmarks[MIDDLE]).normalize());
+                                    yAxis.copy(landmarks[RING].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.LeftHandRing1, RING, landmarks);
 
-                                        avatarBone = avatarBone.children[0];
-                                        updateAxes(axes, xAxis, yAxis, zAxis, rotWorld, userLimbWorld)
-                                    }
-                                } 
+                                    xAxis.copy(landmarks[PINKY].clone().sub(landmarks[RING]).normalize());
+                                    yAxis.copy(landmarks[PINKY].clone().sub(landmarks[WRIST]).normalize());
+                                    solveFinger(nodes.LeftHandPinky1, PINKY, landmarks);
+                                }
                             }
                         }
                     }
