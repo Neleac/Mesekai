@@ -30,7 +30,7 @@ const MIDDLE = 9;
 const RING = 13;
 const PINKY = 17;
 
-const SMOOTHING = 0.5;
+const SMOOTHING = 0.25; // lower = smoother
 
 // cache transforms to avoid reallocation
 const axes = new Matrix3();
@@ -79,12 +79,26 @@ function solveFinger(avatarBone, landmarkIdx, landmarks) {
 
     for (let jointIdx = landmarkIdx; ; jointIdx++) {
         solveRotation(avatarBone, landmarks[jointIdx], landmarks[jointIdx + 1]);
+        
+        // rotation constraints
+        avatarBone.rotation.x = clamp(avatarBone.rotation.x, 0, 90);
+        avatarBone.rotation.y = 0;
+        if (jointIdx == landmarkIdx) {
+            avatarBone.rotation.z = clamp(avatarBone.rotation.z, -10, 10);
+        } else {
+            avatarBone.rotation.z = 0;
+        }
+        
         if (jointIdx == landmarkIdx + 2) {
             break;
         }
         avatarBone = avatarBone.children[0];
         updateAxes();
     }
+}
+
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
 }
 
 export default function Home() {
