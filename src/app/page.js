@@ -25,10 +25,12 @@ const lINDEX = 19;
 const rINDEX = 20;
 
 const WRIST = 0;
+const THUMB = 1;
 const INDEX = 5;
 const MIDDLE = 9;
 const RING = 13;
 const PINKY = 17;
+const FINGERS = [THUMB, INDEX, MIDDLE, RING, PINKY];
 
 const SMOOTHING = 0.25; // lower = smoother
 
@@ -69,31 +71,45 @@ function solveRotation(avatarBone, parentLm, childLm) {
     avatarBone.quaternion.slerp(rotLocal, SMOOTHING);
 }
 
-function solveFinger(avatarBone, landmarkIdx, landmarks) {
-    zAxis.copy(xAxis.clone().cross(yAxis).normalize());
-    axes.set(
-        xAxis.x, yAxis.x, zAxis.x,
-        xAxis.y, yAxis.y, zAxis.y,
-        xAxis.z, yAxis.z, zAxis.z
-    );
-
-    for (let jointIdx = landmarkIdx; ; jointIdx++) {
-        solveRotation(avatarBone, landmarks[jointIdx], landmarks[jointIdx + 1]);
-        
-        // rotation constraints
-        avatarBone.rotation.x = clamp(avatarBone.rotation.x, 0, 90);
-        avatarBone.rotation.y = 0;
-        if (jointIdx == landmarkIdx) {
-            avatarBone.rotation.z = clamp(avatarBone.rotation.z, -10, 10);
+function solveHand(avatarWristBone, handedness, landmarks) {
+    for (let fingerIdx = 0; fingerIdx < avatarWristBone.children.length; fingerIdx++) {
+        // create local axes
+        if (handedness == 'Left') {
+            xAxis.copy(landmarks[INDEX].clone().sub(landmarks[PINKY]).normalize());
         } else {
-            avatarBone.rotation.z = 0;
+            xAxis.copy(landmarks[PINKY].clone().sub(landmarks[INDEX]).normalize());
         }
         
-        if (jointIdx == landmarkIdx + 2) {
-            break;
+        yAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[WRIST]).normalize());
+        zAxis.copy(xAxis.clone().cross(yAxis).normalize());
+        axes.set(
+            xAxis.x, yAxis.x, zAxis.x,
+            xAxis.y, yAxis.y, zAxis.y,
+            xAxis.z, yAxis.z, zAxis.z
+        );
+
+        // solve and apply finger rotations
+        let avatarBone = avatarWristBone.children[fingerIdx];
+        for (let landmarkIdx = FINGERS[fingerIdx]; ; landmarkIdx++) {
+            solveRotation(avatarBone, landmarks[landmarkIdx], landmarks[landmarkIdx + 1]);
+            
+            // rotation constraints, TODO: thumbs
+            avatarBone.rotation.y = 0;
+            if (fingerIdx > 0) {
+                avatarBone.rotation.x = clamp(avatarBone.rotation.x, 0, 90);
+                if (landmarkIdx == FINGERS[fingerIdx]) {
+                    avatarBone.rotation.z = clamp(avatarBone.rotation.z, -15, 15);
+                } else {
+                    avatarBone.rotation.z = 0;
+                }
+            }
+            
+            if (landmarkIdx == FINGERS[fingerIdx] + 2) {
+                break;
+            }
+            avatarBone = avatarBone.children[0];
+            updateAxes();
         }
-        avatarBone = avatarBone.children[0];
-        updateAxes();
     }
 }
 
@@ -107,6 +123,14 @@ export default function Home() {
     const { nodes, materials } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
+
+    for (const child of nodes.RightHand.children) {
+        console.log(child);
+    }
+
+    for (const child of nodes.LeftHand.children) {
+        console.log(child);
+    }
     
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
@@ -264,38 +288,10 @@ export default function Home() {
                                     landmarks.push(new Vector3(worldLandmark.x, worldLandmark.y, worldLandmark.z).negate());
                                 }
 
-                                if (result.handedness[handIdx][0]["categoryName"] == 'Left') {
-                                    xAxis.copy(landmarks[INDEX].clone().sub(landmarks[MIDDLE]).normalize());
-                                    yAxis.copy(landmarks[INDEX].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.RightHandIndex1, INDEX, landmarks);
-                        
-                                    xAxis.copy(landmarks[INDEX].clone().sub(landmarks[MIDDLE]).normalize());
-                                    yAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.RightHandMiddle1, MIDDLE, landmarks);
-
-                                    xAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[RING]).normalize());
-                                    yAxis.copy(landmarks[RING].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.RightHandRing1, RING, landmarks);
-
-                                    xAxis.copy(landmarks[RING].clone().sub(landmarks[PINKY]).normalize());
-                                    yAxis.copy(landmarks[PINKY].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.RightHandPinky1, PINKY, landmarks);
+                                if (result.handedness[handIdx][0]['categoryName'] == 'Left') {
+                                    solveHand(nodes.RightHand, 'Left', landmarks);
                                 } else {
-                                    xAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[INDEX]).normalize());
-                                    yAxis.copy(landmarks[INDEX].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.LeftHandIndex1, INDEX, landmarks);
-                        
-                                    xAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[INDEX]).normalize());
-                                    yAxis.copy(landmarks[MIDDLE].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.LeftHandMiddle1, MIDDLE, landmarks);
-
-                                    xAxis.copy(landmarks[RING].clone().sub(landmarks[MIDDLE]).normalize());
-                                    yAxis.copy(landmarks[RING].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.LeftHandRing1, RING, landmarks);
-
-                                    xAxis.copy(landmarks[PINKY].clone().sub(landmarks[RING]).normalize());
-                                    yAxis.copy(landmarks[PINKY].clone().sub(landmarks[WRIST]).normalize());
-                                    solveFinger(nodes.LeftHandPinky1, PINKY, landmarks);
+                                    solveHand(nodes.LeftHand, 'Right', landmarks);
                                 }
                             }
                         }
