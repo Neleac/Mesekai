@@ -32,7 +32,10 @@ const RING = 13;
 const PINKY = 17;
 const FINGERS = [THUMB, INDEX, MIDDLE, RING, PINKY];
 
-const SMOOTHING = 0.25; // lower = smoother
+// lower = smoother, higher = more responsive
+const HEAD_SMOOTHING = 0.75;
+const BODY_SMOOTHING = 0.25;
+const HAND_SMOOTHING = 0.5;
 
 // cache transforms to avoid reallocation
 const axes = new Matrix3();
@@ -64,11 +67,11 @@ function updateAxes() {
     );
 }
 
-function solveRotation(avatarBone, parentLm, childLm) {
+function solveRotation(avatarBone, parentLm, childLm, smoothing) {
     userLimbWorld.copy(childLm.clone().sub(parentLm)).normalize();
     userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
     rotLocal.setFromUnitVectors(avatarLimbLocal, userLimbLocal);
-    avatarBone.quaternion.slerp(rotLocal, SMOOTHING);
+    avatarBone.quaternion.slerp(rotLocal, smoothing);
 }
 
 function solveHand(avatarWristBone, handedness, landmarks) {
@@ -91,7 +94,7 @@ function solveHand(avatarWristBone, handedness, landmarks) {
         // solve and apply finger rotations
         let avatarBone = avatarWristBone.children[fingerIdx];
         for (let landmarkIdx = FINGERS[fingerIdx]; ; landmarkIdx++) {
-            solveRotation(avatarBone, landmarks[landmarkIdx], landmarks[landmarkIdx + 1]);
+            solveRotation(avatarBone, landmarks[landmarkIdx], landmarks[landmarkIdx + 1], HAND_SMOOTHING);
             
             // rotation constraints, TODO: thumbs
             avatarBone.rotation.y = 0;
@@ -216,11 +219,11 @@ export default function Home() {
 
                             // head rotation
                             if (result.facialTransformationMatrixes && result.facialTransformationMatrixes.length > 0) {
-                                const matrix = new Matrix4().fromArray(result.facialTransformationMatrixes[0].data);
-                                const rotation = new Euler().setFromRotationMatrix(matrix);
-                                nodes.Head.rotation.set(rotation.x, -rotation.y, -rotation.z);
-                                nodes.Neck.rotation.set(rotation.x / 5, -rotation.y / 5, -rotation.z / 5);
-                                nodes.Spine2.rotation.set(rotation.x / 10, -rotation.y / 10, -rotation.z / 10);
+                                const headRotMat = new Matrix4().fromArray(result.facialTransformationMatrixes[0].data);
+                                const headRot = new Euler().setFromRotationMatrix(headRotMat);
+                                nodes.Head.quaternion.slerp(new Quaternion().setFromEuler(new Euler(headRot.x / 2, -headRot.y, -headRot.z)), HEAD_SMOOTHING);
+                                nodes.Neck.quaternion.slerp(new Quaternion().setFromEuler(new Euler(headRot.x / 10, -headRot.y / 5, -headRot.z / 5)), HEAD_SMOOTHING);
+                                nodes.Spine2.quaternion.slerp(new Quaternion().setFromEuler(new Euler(headRot.x / 20, -headRot.y / 10, -headRot.z / 10)), HEAD_SMOOTHING);
                             }
                         }
                     }
@@ -259,24 +262,24 @@ export default function Home() {
                                 spineRot.x /= 4;
                                 spineRot.y /= 2;
                                 spineRot.z /= 2;
-                                nodes.Spine.quaternion.slerp(new Quaternion().setFromEuler(spineRot), SMOOTHING);
-                                nodes.Spine1.quaternion.slerp(new Quaternion().setFromEuler(spineRot), SMOOTHING);
+                                nodes.Spine.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
+                                nodes.Spine1.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
 
                                 // user left arm, avatar right arm
                                 createPoseAxes(landmarks[rSHOULDER], landmarks[lSHOULDER])
-                                solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW]);
+                                solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW], BODY_SMOOTHING);
                                 updateAxes();
-                                solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST]);
+                                solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST], BODY_SMOOTHING);
                                 updateAxes();
-                                solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX]);
+                                solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX], BODY_SMOOTHING);
 
                                 // user right arm, avatar left arm
                                 createPoseAxes(landmarks[lSHOULDER], landmarks[rSHOULDER])
-                                solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW]);
+                                solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW], BODY_SMOOTHING);
                                 updateAxes();
-                                solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST]);
+                                solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST], BODY_SMOOTHING);
                                 updateAxes();
-                                solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX]);
+                                solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX], BODY_SMOOTHING);
 
                                 // TODO: wrist rotation
                             }
