@@ -123,29 +123,21 @@ export default function Home() {
     const { nodes, materials } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
-
-    for (const child of nodes.RightHand.children) {
-        console.log(child);
-    }
-
-    for (const child of nodes.LeftHand.children) {
-        console.log(child);
-    }
     
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
     async function createTrackers() {
         const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
         
-        // faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        //     baseOptions: {
-        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-        //         delegate: DEVICE
-        //     },
-        //     runningMode: 'VIDEO',
-        //     outputFaceBlendshapes: true,
-        //     outputFacialTransformationMatrixes: true
-        // });
+        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+                delegate: DEVICE
+            },
+            runningMode: 'VIDEO',
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: true
+        });
 
         poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -243,7 +235,7 @@ export default function Home() {
                             }
 
                             // solve and apply pose
-                            if (result.worldLandmarks && result.worldLandmarks.length > 0) {                               
+                            if (result.worldLandmarks && result.worldLandmarks.length > 0) {
                                 // cache landmarks
                                 const landmarks = [];
                                 for (const worldLandmark of result.worldLandmarks[0]) {
@@ -251,6 +243,24 @@ export default function Home() {
                                 }
                                 landmarks[lINDEX].lerp(landmarks[lPINKY], 0.5);
                                 landmarks[rINDEX].lerp(landmarks[rPINKY], 0.5);
+
+                                // torso direction
+                                const shoulderX = landmarks[rSHOULDER].clone().sub(landmarks[lSHOULDER]).normalize();
+                                const shoulderY = landmarks[lSHOULDER].clone().lerp(landmarks[rSHOULDER], 0.5).normalize();
+                                const shoulderZ = shoulderX.clone().cross(shoulderY).normalize();
+                                const shoulderRotMat = new Matrix4(
+                                    shoulderX.x, shoulderY.x, shoulderZ.x, 0,
+                                    shoulderX.y, shoulderY.y, shoulderZ.y, 0,
+                                    shoulderX.z, shoulderY.z, shoulderZ.z, 0,
+                                    0, 0, 0, 1
+                                ).multiply(new Matrix4().invert());
+
+                                const spineRot = new Euler().setFromRotationMatrix(shoulderRotMat);
+                                spineRot.x /= 4;
+                                spineRot.y /= 2;
+                                spineRot.z /= 2;
+                                nodes.Spine.quaternion.slerp(new Quaternion().setFromEuler(spineRot), SMOOTHING);
+                                nodes.Spine1.quaternion.slerp(new Quaternion().setFromEuler(spineRot), SMOOTHING);
 
                                 // user left arm, avatar right arm
                                 createPoseAxes(landmarks[rSHOULDER], landmarks[lSHOULDER])
@@ -267,6 +277,8 @@ export default function Home() {
                                 solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST]);
                                 updateAxes();
                                 solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX]);
+
+                                // TODO: wrist rotation
                             }
                         }
                     }
