@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef } from "react"
 import { useGLTF, OrbitControls } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
-import { Euler, Matrix4, Quaternion, Vector3, Matrix3 } from "three"
+import { Euler, Matrix4, Quaternion, Vector3, Matrix3, Mesh } from "three"
 
 // hardware configuration
 const DEVICE = "GPU"
@@ -176,11 +176,11 @@ export default function Home() {
   // avatar
   // const { nodes, materials } = useGLTF('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
   const { nodes, materials } = useGLTF("/avatar.glb")
-  const meshes = [
-    nodes.EyeLeft,
-    nodes.EyeRight,
-    nodes.Wolf3D_Head,
-    nodes.Wolf3D_Teeth,
+  const meshes: Mesh[] = [
+    nodes.EyeLeft as Mesh,
+    nodes.EyeRight as Mesh,
+    nodes.Wolf3D_Head as Mesh,
+    nodes.Wolf3D_Teeth as Mesh,
   ]
   console.log(nodes)
 
