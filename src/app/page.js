@@ -32,19 +32,30 @@ const RING = 13;
 const PINKY = 17;
 const FINGERS = [THUMB, INDEX, MIDDLE, RING, PINKY];
 
+const VIS_THRESH = 0.5; // min landmark visibility to be used for tracking
+
 // lower = smoother, higher = more responsive
 const HEAD_SMOOTHING = 0.75;
 const BODY_SMOOTHING = 0.25;
 const HAND_SMOOTHING = 0.5;
 
-// cache transforms to avoid reallocation
+// cache landmarks and transforms to avoid reallocation
+const poseLms = new Array(33);
+for (let lm_idx = 0; lm_idx < poseLms.length; lm_idx++) {
+    poseLms[lm_idx] = new Vector3();
+}
+
 const axes = new Matrix3();
 const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
 const rotWorld = new Quaternion(), rotLocal = new Quaternion();
 const userLimbWorld = new Vector3(), userLimbLocal = new Vector3();
 const avatarLimbLocal = new Vector3(0, 1, 0);
 
-function createPoseAxes(landmarkFrom, landmarkTo) {
+
+// x: orthogonal to y and z
+// y: along shoulder blade
+// z: along spine
+function createShoulderAxes(landmarkFrom, landmarkTo) {
     yAxis.copy(landmarkTo.clone().sub(landmarkFrom).normalize());
     zAxis.copy(landmarkTo.clone().lerp(landmarkFrom, 0.5).negate().normalize());
     xAxis.copy(yAxis.clone().cross(zAxis).normalize());
@@ -54,6 +65,7 @@ function createPoseAxes(landmarkFrom, landmarkTo) {
         xAxis.z, yAxis.z, zAxis.z
     );
 }
+
 
 function updateAxes() {
     rotWorld.setFromUnitVectors(yAxis, userLimbWorld);
@@ -67,12 +79,14 @@ function updateAxes() {
     );
 }
 
+
 function solveRotation(avatarBone, parentLm, childLm, smoothing) {
     userLimbWorld.copy(childLm.clone().sub(parentLm)).normalize();
     userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
     rotLocal.setFromUnitVectors(avatarLimbLocal, userLimbLocal);
     avatarBone.quaternion.slerp(rotLocal, smoothing);
 }
+
 
 function solveHand(avatarWristBone, handedness, landmarks) {
     for (let fingerIdx = 0; fingerIdx < avatarWristBone.children.length; fingerIdx++) {
@@ -116,9 +130,11 @@ function solveHand(avatarWristBone, handedness, landmarks) {
     }
 }
 
+
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
+
 
 export default function Home() {
     // avatar
@@ -126,21 +142,21 @@ export default function Home() {
     const { nodes, materials } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
     console.log(nodes);
-    
+
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
     async function createTrackers() {
         const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
         
-        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: 'VIDEO',
-            outputFaceBlendshapes: true,
-            outputFacialTransformationMatrixes: true
-        });
+        // faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        //     baseOptions: {
+        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        //         delegate: DEVICE
+        //     },
+        //     runningMode: 'VIDEO',
+        //     outputFaceBlendshapes: true,
+        //     outputFacialTransformationMatrixes: true
+        // });
 
         poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -150,16 +166,16 @@ export default function Home() {
             runningMode: 'VIDEO'
         });
 
-        handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: 'VIDEO',
-            numHands: 2,
-            min_hand_detection_confidence: 0.95,
-            min_hand_presence_confidence: 0.95
-        });
+        // handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
+        //     baseOptions: {
+        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        //         delegate: DEVICE
+        //     },
+        //     runningMode: 'VIDEO',
+        //     numHands: 2,
+        //     min_hand_detection_confidence: 0.95,
+        //     min_hand_presence_confidence: 0.95
+        // });
     }
     createTrackers();
 
@@ -239,49 +255,66 @@ export default function Home() {
 
                             // solve and apply pose
                             if (result.worldLandmarks && result.worldLandmarks.length > 0) {
-                                // cache landmarks
-                                const landmarks = [];
-                                for (const worldLandmark of result.worldLandmarks[0]) {
-                                    landmarks.push(new Vector3(worldLandmark.x, worldLandmark.y, worldLandmark.z).negate());
+                                // cache visible landmarks, else set to zero vector
+                                result.worldLandmarks[0].forEach((landmark, lm_idx) => {
+                                    if (landmark.visibility > VIS_THRESH) {
+                                        poseLms[lm_idx].set(-landmark.x, -landmark.y, -landmark.z);
+                                    } else {
+                                        poseLms[lm_idx].set(0, 0, 0);
+                                    }
+                                });
+
+                                if (poseLms[lSHOULDER].length() > 0 && poseLms[rSHOULDER].length() > 0) {
+                                    // torso direction
+                                    const shoulderX = poseLms[rSHOULDER].clone().sub(poseLms[lSHOULDER]).normalize();
+                                    const shoulderY = poseLms[lSHOULDER].clone().lerp(poseLms[rSHOULDER], 0.5).normalize();
+                                    const shoulderZ = shoulderX.clone().cross(shoulderY).normalize();
+                                    const shoulderRotMat = new Matrix4(
+                                        shoulderX.x, shoulderY.x, shoulderZ.x, 0,
+                                        shoulderX.y, shoulderY.y, shoulderZ.y, 0,
+                                        shoulderX.z, shoulderY.z, shoulderZ.z, 0,
+                                        0, 0, 0, 1
+                                    ).multiply(new Matrix4().invert());
+
+                                    const spineRot = new Euler().setFromRotationMatrix(shoulderRotMat);
+                                    spineRot.x /= 4;
+                                    spineRot.y /= 2;
+                                    spineRot.z /= 2;
+                                    nodes.Spine.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
+                                    nodes.Spine1.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
+
+                                    // user left arm, avatar right arm
+                                    createShoulderAxes(poseLms[rSHOULDER], poseLms[lSHOULDER]);
+                                    if (poseLms[lELBOW].length() > 0) {
+                                        solveRotation(nodes.RightArm, poseLms[lSHOULDER], poseLms[lELBOW], BODY_SMOOTHING);
+                                        if (poseLms[lWRIST].length() > 0) {
+                                            updateAxes();
+                                            solveRotation(nodes.RightForeArm, poseLms[lELBOW], poseLms[lWRIST], BODY_SMOOTHING);
+                                            if (poseLms[lINDEX].length() > 0 && poseLms[lPINKY].length() > 0) {
+                                                poseLms[lINDEX].lerp(poseLms[lPINKY], 0.5);
+                                                updateAxes();
+                                                solveRotation(nodes.RightHand, poseLms[lWRIST], poseLms[lINDEX], BODY_SMOOTHING);
+                                            }
+                                        }
+                                    }
+
+                                    // user right arm, avatar left arm
+                                    createShoulderAxes(poseLms[lSHOULDER], poseLms[rSHOULDER]);
+                                    if (poseLms[rELBOW].length() > 0) {
+                                        solveRotation(nodes.LeftArm, poseLms[rSHOULDER], poseLms[rELBOW], BODY_SMOOTHING);
+                                        if (poseLms[rWRIST].length() > 0) {
+                                            updateAxes();
+                                            solveRotation(nodes.LeftForeArm, poseLms[rELBOW], poseLms[rWRIST], BODY_SMOOTHING);
+                                            if (poseLms[rINDEX].length() > 0 && poseLms[rPINKY].length() > 0) {
+                                                poseLms[rINDEX].lerp(poseLms[rPINKY], 0.5);
+                                                updateAxes();
+                                                solveRotation(nodes.LeftHand, poseLms[rWRIST], poseLms[rINDEX], BODY_SMOOTHING);
+                                            }
+                                        }
+                                    }
+
+                                    // TODO: wrist rotation (forearm twist)
                                 }
-                                landmarks[lINDEX].lerp(landmarks[lPINKY], 0.5);
-                                landmarks[rINDEX].lerp(landmarks[rPINKY], 0.5);
-
-                                // torso direction
-                                const shoulderX = landmarks[rSHOULDER].clone().sub(landmarks[lSHOULDER]).normalize();
-                                const shoulderY = landmarks[lSHOULDER].clone().lerp(landmarks[rSHOULDER], 0.5).normalize();
-                                const shoulderZ = shoulderX.clone().cross(shoulderY).normalize();
-                                const shoulderRotMat = new Matrix4(
-                                    shoulderX.x, shoulderY.x, shoulderZ.x, 0,
-                                    shoulderX.y, shoulderY.y, shoulderZ.y, 0,
-                                    shoulderX.z, shoulderY.z, shoulderZ.z, 0,
-                                    0, 0, 0, 1
-                                ).multiply(new Matrix4().invert());
-
-                                const spineRot = new Euler().setFromRotationMatrix(shoulderRotMat);
-                                spineRot.x /= 4;
-                                spineRot.y /= 2;
-                                spineRot.z /= 2;
-                                nodes.Spine.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
-                                nodes.Spine1.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
-
-                                // user left arm, avatar right arm
-                                createPoseAxes(landmarks[rSHOULDER], landmarks[lSHOULDER])
-                                solveRotation(nodes.RightArm, landmarks[lSHOULDER], landmarks[lELBOW], BODY_SMOOTHING);
-                                updateAxes();
-                                solveRotation(nodes.RightForeArm, landmarks[lELBOW], landmarks[lWRIST], BODY_SMOOTHING);
-                                updateAxes();
-                                solveRotation(nodes.RightHand, landmarks[lWRIST], landmarks[lINDEX], BODY_SMOOTHING);
-
-                                // user right arm, avatar left arm
-                                createPoseAxes(landmarks[lSHOULDER], landmarks[rSHOULDER])
-                                solveRotation(nodes.LeftArm, landmarks[rSHOULDER], landmarks[rELBOW], BODY_SMOOTHING);
-                                updateAxes();
-                                solveRotation(nodes.LeftForeArm, landmarks[rELBOW], landmarks[rWRIST], BODY_SMOOTHING);
-                                updateAxes();
-                                solveRotation(nodes.LeftHand, landmarks[rWRIST], landmarks[rINDEX], BODY_SMOOTHING);
-
-                                // TODO: wrist rotation
                             }
                         }
                     }
@@ -341,6 +374,7 @@ export default function Home() {
                 <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', width: '100%', transform: 'scaleX(-1)' }}></canvas>
             </div>
             <Canvas style={{ width: '100vw', height: '100vh' }} >
+                <color attach='background' args={['grey']} />
                 <OrbitControls />
                 <ambientLight intensity={0.1} />
                 <directionalLight position={[0, 0, 1]} />
