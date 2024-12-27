@@ -5,7 +5,7 @@ import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver, Drawin
 import { useEffect, useRef } from 'react';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Euler, Matrix4, Quaternion, Vector3, Matrix3 } from 'three';
+import { Euler, Matrix4, Quaternion, Vector3, Matrix3, MathUtils } from 'three';
 
 // hardware configuration
 const DEVICE = 'GPU';
@@ -23,6 +23,14 @@ const lPINKY = 17;
 const rPINKY = 18;
 const lINDEX = 19;
 const rINDEX = 20;
+const lHIP = 23;
+const rHIP = 24;
+const lKNEE = 25;
+const rKNEE = 26;
+const lANKLE = 27;
+const rANKLE = 28;
+const lHEEL = 29;
+const rHEEL = 30;
 
 const WRIST = 0;
 const THUMB = 1;
@@ -67,6 +75,21 @@ function createShoulderAxes(landmarkFrom, landmarkTo) {
 }
 
 
+// x: along waist
+// y: along world y axis
+// z: orthogonal to x and y
+function createHipAxes(lHipLm, rHipLm) {
+    xAxis.copy(lHipLm.clone().sub(rHipLm).normalize());
+    yAxis.set(0, -1, 0);
+    zAxis.copy(xAxis.clone().cross(yAxis).normalize());
+    axes.set(
+        xAxis.x, yAxis.x, zAxis.x,
+        xAxis.y, yAxis.y, zAxis.y,
+        xAxis.z, yAxis.z, zAxis.z
+    );
+}
+
+
 function updateAxes() {
     rotWorld.setFromUnitVectors(yAxis, userLimbWorld);
     xAxis.applyQuaternion(rotWorld);
@@ -80,10 +103,16 @@ function updateAxes() {
 }
 
 
-function solveRotation(avatarBone, parentLm, childLm, smoothing) {
+function solveRotation(avatarBone, parentLm, childLm, smoothing, isHip=false) {
     userLimbWorld.copy(childLm.clone().sub(parentLm)).normalize();
     userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize();
     rotLocal.setFromUnitVectors(avatarLimbLocal, userLimbLocal);
+
+    // hip identity rotation points leg up, make leg point down to avoid y rotation ambiguity (twisted hip)
+    if (isHip) {
+        rotLocal.multiplyQuaternions(new Quaternion(0, 0, 1, 0), rotLocal);
+    }
+
     avatarBone.quaternion.slerp(rotLocal, smoothing);
 }
 
@@ -113,9 +142,9 @@ function solveHand(avatarWristBone, handedness, landmarks) {
             // rotation constraints, TODO: thumbs
             avatarBone.rotation.y = 0;
             if (fingerIdx > 0) {
-                avatarBone.rotation.x = clamp(avatarBone.rotation.x, 0, 90);
+                avatarBone.rotation.x = clampRadiansToDegrees(avatarBone.rotation.x, 0, 90);
                 if (landmarkIdx == FINGERS[fingerIdx]) {
-                    avatarBone.rotation.z = clamp(avatarBone.rotation.z, -15, 15);
+                    avatarBone.rotation.z = clampRadiansToDegrees(avatarBone.rotation.z, -15, 15);
                 } else {
                     avatarBone.rotation.z = 0;
                 }
@@ -131,7 +160,10 @@ function solveHand(avatarWristBone, handedness, landmarks) {
 }
 
 
-function clamp(value, min, max) {
+// value in radians, min/max in degrees
+function clampRadiansToDegrees(value, min, max) {
+    min = MathUtils.degToRad(min);
+    max = MathUtils.degToRad(max);
     return Math.min(Math.max(value, min), max);
 }
 
@@ -148,15 +180,15 @@ export default function Home() {
     async function createTrackers() {
         const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
         
-        // faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        //     baseOptions: {
-        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-        //         delegate: DEVICE
-        //     },
-        //     runningMode: 'VIDEO',
-        //     outputFaceBlendshapes: true,
-        //     outputFacialTransformationMatrixes: true
-        // });
+        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+                delegate: DEVICE
+            },
+            runningMode: 'VIDEO',
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: true
+        });
 
         poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -166,16 +198,16 @@ export default function Home() {
             runningMode: 'VIDEO'
         });
 
-        // handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
-        //     baseOptions: {
-        //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-        //         delegate: DEVICE
-        //     },
-        //     runningMode: 'VIDEO',
-        //     numHands: 2,
-        //     min_hand_detection_confidence: 0.95,
-        //     min_hand_presence_confidence: 0.95
-        // });
+        handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+                delegate: DEVICE
+            },
+            runningMode: 'VIDEO',
+            numHands: 2,
+            min_hand_detection_confidence: 0.95,
+            min_hand_presence_confidence: 0.95
+        });
     }
     createTrackers();
 
@@ -315,6 +347,36 @@ export default function Home() {
 
                                     // TODO: wrist rotation (forearm twist)
                                 }
+
+                                if (poseLms[lHIP].length() > 0 && poseLms[rHIP].length() > 0) {
+                                    // user left leg, avatar right leg
+                                    createHipAxes(poseLms[lHIP], poseLms[rHIP]);
+                                    if (poseLms[lKNEE].length() > 0) {
+                                        solveRotation(nodes.RightUpLeg, poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true);
+                                        if (poseLms[lANKLE].length() > 0) {
+                                            updateAxes();
+                                            solveRotation(nodes.RightLeg, poseLms[lKNEE], poseLms[lANKLE], BODY_SMOOTHING);
+                                            if (poseLms[lHEEL].length() > 0) {
+                                                updateAxes();
+                                                solveRotation(nodes.RightFoot, poseLms[lANKLE], poseLms[lHEEL], BODY_SMOOTHING);
+                                            }
+                                        }
+                                    }
+
+                                    // user right leg, avatar left leg
+                                    createHipAxes(poseLms[lHIP], poseLms[rHIP]);
+                                    if (poseLms[rKNEE].length() > 0) {
+                                        solveRotation(nodes.LeftUpLeg, poseLms[rHIP], poseLms[rKNEE], BODY_SMOOTHING, true);
+                                        if (poseLms[rANKLE].length() > 0) {
+                                            updateAxes();
+                                            solveRotation(nodes.LeftLeg, poseLms[rKNEE], poseLms[rANKLE], BODY_SMOOTHING);
+                                            if (poseLms[rHEEL].length() > 0) {
+                                                updateAxes();
+                                                solveRotation(nodes.LeftFoot, poseLms[rANKLE], poseLms[rHEEL], BODY_SMOOTHING);
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -378,7 +440,7 @@ export default function Home() {
                 <OrbitControls />
                 <ambientLight intensity={0.1} />
                 <directionalLight position={[0, 0, 1]} />
-                <primitive object={nodes.Scene} position={[0, -7.5, 0]} scale={[5, 5, 5]} />
+                <primitive object={nodes.Scene} position={[0, -1, 3.5]} />
             </Canvas>
         </div>
     );
