@@ -46,6 +46,16 @@ for (let lm_idx = 0; lm_idx < handLms.length; lm_idx++) {
     handLms[lm_idx] = new Vector3();
 }
 
+const headRotMat = new Matrix4();
+const headEuler = new Euler();
+const headQuat = new Quaternion();
+
+const invIdentityMat = new Matrix4().invert();
+const shoulderRotMat = new Matrix4();
+const spineEuler = new Euler();
+const spineQuat = new Quaternion();
+const zRotQuat = new Quaternion(0, 0, 1, 0);
+
 const axes = new Matrix3();
 const xAxis = new Vector3(), yAxis = new Vector3(), zAxis = new Vector3();
 const rotWorld = new Quaternion(), rotLocal = new Quaternion();
@@ -75,11 +85,20 @@ export function animateFace(meshes, blendshapes) {
 
 
 export function rotateHead(bones, faceMatrix) {
-    const headRotMat = new Matrix4().fromArray(faceMatrix);
-    const headRot = new Euler().setFromRotationMatrix(headRotMat);
-    bones.Head.quaternion.slerp(new Quaternion().setFromEuler(new Euler(headRot.x / 2, -headRot.y, -headRot.z)), HEAD_SMOOTHING);
-    bones.Neck.quaternion.slerp(new Quaternion().setFromEuler(new Euler(headRot.x / 10, -headRot.y / 5, -headRot.z / 5)), HEAD_SMOOTHING);
-    bones.Spine2.quaternion.slerp(new Quaternion().setFromEuler(new Euler(headRot.x / 20, -headRot.y / 10, -headRot.z / 10)), HEAD_SMOOTHING);  
+    headRotMat.fromArray(faceMatrix);
+    headEuler.setFromRotationMatrix(headRotMat);
+
+    headEuler.set(headEuler.x / 2, -headEuler.y, -headEuler.z);
+    headQuat.setFromEuler(headEuler);
+    bones.Head.quaternion.slerp(headQuat, HEAD_SMOOTHING);
+    
+    headEuler.set(headEuler.x / 10, -headEuler.y / 5, -headEuler.z / 5);
+    headQuat.setFromEuler(headEuler);
+    bones.Neck.quaternion.slerp(headQuat, HEAD_SMOOTHING);
+    
+    headEuler.set(headEuler.x / 20, -headEuler.y / 10, -headEuler.z / 10);
+    headQuat.setFromEuler(headEuler);
+    bones.Spine2.quaternion.slerp(headQuat, HEAD_SMOOTHING);  
 }
 
 
@@ -98,19 +117,18 @@ export function animateBody(bones, landmarks) {
         const shoulderX = poseLms[rSHOULDER].clone().sub(poseLms[lSHOULDER]).normalize();
         const shoulderY = poseLms[lSHOULDER].clone().lerp(poseLms[rSHOULDER], 0.5).normalize();
         const shoulderZ = shoulderX.clone().cross(shoulderY).normalize();
-        const shoulderRotMat = new Matrix4(
+        shoulderRotMat.set(
             shoulderX.x, shoulderY.x, shoulderZ.x, 0,
             shoulderX.y, shoulderY.y, shoulderZ.y, 0,
             shoulderX.z, shoulderY.z, shoulderZ.z, 0,
             0, 0, 0, 1
-        ).multiply(new Matrix4().invert());
+        ).multiply(invIdentityMat);
 
-        const spineRot = new Euler().setFromRotationMatrix(shoulderRotMat);
-        spineRot.x /= 4;
-        spineRot.y /= 2;
-        spineRot.z /= 2;
-        bones.Spine.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
-        bones.Spine1.quaternion.slerp(new Quaternion().setFromEuler(spineRot), BODY_SMOOTHING);
+        spineEuler.setFromRotationMatrix(shoulderRotMat);
+        spineEuler.set(spineEuler.x / 4, spineEuler.y / 2, spineEuler.z / 2);
+        spineQuat.setFromEuler(spineEuler);
+        bones.Spine.quaternion.slerp(spineQuat, BODY_SMOOTHING);
+        bones.Spine1.quaternion.slerp(spineQuat, BODY_SMOOTHING);
 
         // user left arm, avatar right arm
         createShoulderAxes(poseLms[rSHOULDER], poseLms[lSHOULDER]);
@@ -243,7 +261,7 @@ function solveRotation(avatarBone, parentLm, childLm, smoothing, isHip=false) {
 
     // hip identity rotation points leg up, make leg point down to avoid y rotation ambiguity (twisted hip)
     if (isHip) {
-        rotLocal.multiplyQuaternions(new Quaternion(0, 0, 1, 0), rotLocal);
+        rotLocal.multiplyQuaternions(zRotQuat, rotLocal);
     }
 
     avatarBone.quaternion.slerp(rotLocal, smoothing);

@@ -20,7 +20,6 @@ export default function Home() {
     // const { nodes, _ } = useGLTF('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
     const { nodes, _ } = useGLTF('/avatar.glb');
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
-    console.log(nodes);
 
     // face, pose, hands landmark detection models
     let faceTracker, poseTracker, handTracker;
@@ -64,7 +63,8 @@ export default function Home() {
         const canvasCtx = canvas.current.getContext('2d');
         const drawingUtils = new DrawingUtils(canvasCtx);
         let lastVideoTime = -1;
-
+        let trackingResult;
+        
         const camera = new Camera(video.current, {
             onFrame: async () => {
                 if (lastVideoTime != video.current.currentTime) {
@@ -74,11 +74,11 @@ export default function Home() {
                     canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height);
 
                     if (faceTracker) {
-                        const result = faceTracker.detectForVideo(video.current, performance.now());
-                        if (result) {
+                        trackingResult = faceTracker.detectForVideo(video.current, performance.now());
+                        if (trackingResult) {
                             // video overlay
-                            if (result.faceLandmarks) {
-                                for (const landmarks of result.faceLandmarks) {
+                            if (trackingResult.faceLandmarks) {
+                                for (const landmarks of trackingResult.faceLandmarks) {
                                     drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: '#C0C0C070', lineWidth: CAM_HEIGHT / 1000 });
                                     drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
                                     drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
@@ -91,41 +91,41 @@ export default function Home() {
                                 }
                             }
 
-                            if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
-                                animateFace(meshes, result.faceBlendshapes[0].categories);
+                            if (trackingResult.faceBlendshapes && trackingResult.faceBlendshapes.length > 0) {
+                                animateFace(meshes, trackingResult.faceBlendshapes[0].categories);
                             }
 
-                            if (result.facialTransformationMatrixes && result.facialTransformationMatrixes.length > 0) {
-                                rotateHead(nodes, result.facialTransformationMatrixes[0].data)
+                            if (trackingResult.facialTransformationMatrixes && trackingResult.facialTransformationMatrixes.length > 0) {
+                                rotateHead(nodes, trackingResult.facialTransformationMatrixes[0].data)
                             }
                         }
                     }
 
                     if (poseTracker) {
-                        const result = poseTracker.detectForVideo(video.current, performance.now());
-                        if (result) {
+                        trackingResult = poseTracker.detectForVideo(video.current, performance.now());
+                        if (trackingResult) {
                             // video overlay
-                            for (const landmark of result.landmarks) {
+                            for (const landmark of trackingResult.landmarks) {
                                 drawingUtils.drawLandmarks(landmark, {radius: CAM_HEIGHT / 1000});
                                 drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 500 });
                             }
 
-                            if (result.worldLandmarks && result.worldLandmarks.length > 0) {
-                                animateBody(nodes, result.worldLandmarks[0]);
+                            if (trackingResult.worldLandmarks && trackingResult.worldLandmarks.length > 0) {
+                                animateBody(nodes, trackingResult.worldLandmarks[0]);
                             }
                         }
                     }
 
                     if (handTracker) {
-                        const result = handTracker.detectForVideo(video.current, performance.now());
-                        if (result) {
+                        trackingResult = handTracker.detectForVideo(video.current, performance.now());
+                        if (trackingResult) {
                             // video overlay
-                            for (const landmark of result.landmarks) {
+                            for (const landmark of trackingResult.landmarks) {
                                 drawingUtils.drawLandmarks(landmark, {color: 'green', radius: CAM_HEIGHT / 1000 });
                                 drawingUtils.drawConnectors(landmark, HandLandmarker.HAND_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 1000 });
                             }
 
-                            animateHands(nodes, result);
+                            animateHands(nodes, trackingResult);
                         }
                     }
 
