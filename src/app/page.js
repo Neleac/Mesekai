@@ -1,53 +1,21 @@
 'use client';
 
 import { Camera } from '@mediapipe/camera_utils';
-import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
+import { DrawingUtils } from '@mediapipe/tasks-vision';
 import { useEffect, useRef, useState } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 
 import Avatar from '@/components/avatar';
+import { createTrackers, drawFaceLandmarks, drawBodyLandmarks, drawHandLandmarks } from '@/utils/tracker';
 
-// hardware configuration
-const DEVICE = 'GPU';
-const MODE = 'VIDEO';
+
 const CAM_HEIGHT = 720;
 const CAM_WIDTH = 1280;
 
 let trackersCreated = false;
 let faceTracker, bodyTracker, handTracker;
-async function createTrackers() {
-    const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
-    
-    faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-            delegate: DEVICE
-        },
-        runningMode: MODE,
-        outputFaceBlendshapes: true,
-        outputFacialTransformationMatrixes: true
-    });
 
-    bodyTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-            delegate: DEVICE
-        },
-        runningMode: MODE
-    });
-
-    handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-            delegate: DEVICE
-        },
-        runningMode: MODE,
-        numHands: 2,
-        min_hand_detection_confidence: 0.95,
-        min_hand_presence_confidence: 0.95
-    });
-}
 
 export default function Home() {
     const [faceTrackingResult, setFaceTrackingResult] = useState(null);
@@ -65,7 +33,7 @@ export default function Home() {
         const camera = new Camera(video.current, {
             onFrame: async () => {
                 if (!trackersCreated) {
-                    await createTrackers();
+                    [faceTracker, bodyTracker, handTracker] = await createTrackers();
                     trackersCreated = true;
                 }
 
@@ -75,53 +43,17 @@ export default function Home() {
                     canvasCtx.save();
                     canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height);
 
-                    if (faceTracker) {
-                        trackingResult = faceTracker.detectForVideo(video.current, performance.now());
-                        if (trackingResult) {
-                            setFaceTrackingResult(trackingResult);
+                    trackingResult = faceTracker.detectForVideo(video.current, performance.now());
+                    setFaceTrackingResult(trackingResult);
+                    drawFaceLandmarks(trackingResult.faceLandmarks, drawingUtils, CAM_HEIGHT / 1000);
 
-                            // video overlay
-                            if (trackingResult.faceLandmarks) {
-                                for (const landmarks of trackingResult.faceLandmarks) {
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, { color: '#C0C0C070', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: '#E0E0E0', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, { color: 'cyan', lineWidth: CAM_HEIGHT / 1000 });
-                                }
-                            }
-                        }
-                    }
+                    trackingResult = bodyTracker.detectForVideo(video.current, performance.now());
+                    setBodyTrackingResult(trackingResult);
+                    drawBodyLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 500);
 
-                    if (bodyTracker) {
-                        trackingResult = bodyTracker.detectForVideo(video.current, performance.now());
-                        if (trackingResult) {
-                            setBodyTrackingResult(trackingResult);
-
-                            // video overlay
-                            for (const landmark of trackingResult.landmarks) {
-                                drawingUtils.drawLandmarks(landmark, {radius: CAM_HEIGHT / 1000});
-                                drawingUtils.drawConnectors(landmark, PoseLandmarker.POSE_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 500 });
-                            }
-                        }
-                    }
-
-                    if (handTracker) {
-                        trackingResult = handTracker.detectForVideo(video.current, performance.now());
-                        if (trackingResult) {
-                            setHandTrackingResult(trackingResult);
-
-                            // video overlay
-                            for (const landmark of trackingResult.landmarks) {
-                                drawingUtils.drawLandmarks(landmark, {color: 'green', radius: CAM_HEIGHT / 1000 });
-                                drawingUtils.drawConnectors(landmark, HandLandmarker.HAND_CONNECTIONS, { color: 'lime', lineWidth: CAM_HEIGHT / 1000 });
-                            }
-                        }
-                    }
+                    trackingResult = handTracker.detectForVideo(video.current, performance.now());
+                    setHandTrackingResult(trackingResult);
+                    drawHandLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 1000);
 
                     canvasCtx.restore();
                 }
