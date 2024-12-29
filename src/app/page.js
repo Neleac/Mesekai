@@ -2,11 +2,12 @@
 
 import { Camera } from '@mediapipe/camera_utils';
 import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 
-import { animateBody, animateFace, animateHands, rotateHead } from '@/lib/avatar';
+import Avatar from '@/components/avatar';
+import { animateBody, animateFace, animateHands, rotateHead } from '@/utils/solver';
 
 // hardware configuration
 const DEVICE = 'GPU';
@@ -14,51 +15,57 @@ const MODE = 'VIDEO';
 const CAM_HEIGHT = 720;
 const CAM_WIDTH = 1280;
 
+let trackersCreated = false;
+let faceTracker, poseTracker, handTracker;
+async function createTrackers() {
+    const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
+    
+    faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: DEVICE
+        },
+        runningMode: MODE,
+        outputFaceBlendshapes: true,
+        outputFacialTransformationMatrixes: true
+    });
+
+    // poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
+    //     baseOptions: {
+    //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+    //         delegate: DEVICE
+    //     },
+    //     runningMode: MODE
+    // });
+
+    // handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
+    //     baseOptions: {
+    //         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+    //         delegate: DEVICE
+    //     },
+    //     runningMode: MODE,
+    //     numHands: 2,
+    //     min_hand_detection_confidence: 0.95,
+    //     min_hand_presence_confidence: 0.95
+    // });
+
+    trackersCreated = true;
+}
 
 export default function Home() {
     // avatar
-    // const { nodes, _ } = useGLTF('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
-    const { nodes, _ } = useGLTF('/avatar.glb');
-    const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
+    // const { nodes, _ } = useGLTF('/avatar.glb');
+    // const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
 
-    // face, pose, hands landmark detection models
-    let faceTracker, poseTracker, handTracker;
-    async function createTrackers() {
-        const filesetResolver = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
-        
-        faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: MODE,
-            outputFaceBlendshapes: true,
-            outputFacialTransformationMatrixes: true
-        });
-
-        poseTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-                delegate: DEVICE
-            },
-            runningMode: MODE
-        });
-
-        handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-                delegate: DEVICE
-            },
-            runningMode: MODE,
-            numHands: 2,
-            min_hand_detection_confidence: 0.95,
-            min_hand_presence_confidence: 0.95
-        });
+    if (!trackersCreated)
+    {
+        createTrackers();
     }
-    createTrackers();
 
     const video = useRef(null);
     const canvas = useRef(null);
+    const [nodes, setNodes] = useState(null);
+
     useEffect(() => {
         const canvasCtx = canvas.current.getContext('2d');
         const drawingUtils = new DrawingUtils(canvasCtx);
@@ -91,9 +98,12 @@ export default function Home() {
                                 }
                             }
 
-                            if (trackingResult.faceBlendshapes && trackingResult.faceBlendshapes.length > 0) {
-                                animateFace(meshes, trackingResult.faceBlendshapes[0].categories);
-                            }
+                            // if (trackingResult.faceBlendshapes && trackingResult.faceBlendshapes.length > 0) {
+                            //     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth];
+                            //     animateFace(meshes, trackingResult.faceBlendshapes[0].categories);
+                            // }
+
+                            console.log(nodes);
 
                             if (trackingResult.facialTransformationMatrixes && trackingResult.facialTransformationMatrixes.length > 0) {
                                 rotateHead(nodes, trackingResult.facialTransformationMatrixes[0].data)
@@ -149,20 +159,21 @@ export default function Home() {
                 handTracker.close();
             }
         };
-    });
+    }, [nodes]);
 
     return (
         <div style={{ display: 'flex' }}>
             <div style={{ position: 'relative', width: CAM_WIDTH, height: CAM_HEIGHT }}>
-                <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ width: '100%', width: '100%', transform: 'scaleX(-1)' }}></video>
-                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', width: '100%', transform: 'scaleX(-1)' }}></canvas>
+                <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ width: '100%', transform: 'scaleX(-1)' }}></video>
+                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: 'scaleX(-1)' }}></canvas>
             </div>
             <Canvas style={{ width: '100vw', height: '100vh' }} >
                 <color attach='background' args={['grey']} />
-                <OrbitControls />
                 <ambientLight intensity={0.1} />
                 <directionalLight position={[0, 0, 1]} />
-                <primitive object={nodes.Scene} position={[0, -1, 3.5]} />
+                <Avatar setNodes={setNodes} />
+                <OrbitControls />
+                {/* <primitive object={nodes.Scene} position={[0, -1, 3.5]} /> */}
             </Canvas>
         </div>
     );
