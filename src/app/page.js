@@ -1,81 +1,81 @@
-'use client';
+'use client'
 
-import { Camera } from '@mediapipe/camera_utils';
-import { DrawingUtils } from '@mediapipe/tasks-vision';
-import { useEffect, useRef, useState } from 'react';
-import { OrbitControls } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
+import { Camera } from '@mediapipe/camera_utils'
+import { DrawingUtils } from '@mediapipe/tasks-vision'
+import { useEffect, useRef, useState } from 'react'
+import { OrbitControls } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
 
-import Avatar from '@/components/avatar';
-import { createTrackers, drawFaceLandmarks, drawBodyLandmarks, drawHandLandmarks } from '@/utils/tracker';
+import Avatar from '@/components/avatar'
+import { createTrackers, drawFaceLandmarks, drawBodyLandmarks, drawHandLandmarks } from '@/utils/tracker'
 
 
-const CAM_HEIGHT = 720;
-const CAM_WIDTH = 1280;
+const CAM_HEIGHT = 720
+const CAM_WIDTH = 1280
 
-let trackersCreated = false;
-let faceTracker, bodyTracker, handTracker;
+let trackersCreated = false
+let faceTracker, bodyTracker, handTracker
 
 
 export default function Home() {
-    const [faceTrackingResult, setFaceTrackingResult] = useState(null);
-    const [bodyTrackingResult, setBodyTrackingResult] = useState(null);
-    const [handTrackingResult, setHandTrackingResult] = useState(null);
+    const [faceTrackingResult, setFaceTrackingResult] = useState(null)
+    const [bodyTrackingResult, setBodyTrackingResult] = useState(null)
+    const [handTrackingResult, setHandTrackingResult] = useState(null)
 
-    const video = useRef(null);
-    const canvas = useRef(null);
+    const video = useRef(null)
+    const canvas = useRef(null)
     useEffect(() => {
-        const canvasCtx = canvas.current.getContext('2d');
-        const drawingUtils = new DrawingUtils(canvasCtx);
-        let lastVideoTime = -1;
-        let trackingResult;
+        const canvasCtx = canvas.current.getContext('2d')
+        const drawingUtils = new DrawingUtils(canvasCtx)
+        let lastVideoTime = -1
+        let trackingResult
         
         const camera = new Camera(video.current, {
             onFrame: async () => {
                 if (!trackersCreated) {
-                    [faceTracker, bodyTracker, handTracker] = await createTrackers();
-                    trackersCreated = true;
+                    [faceTracker, bodyTracker, handTracker] = await createTrackers()
+                    trackersCreated = true
                 }
 
                 if (lastVideoTime != video.current.currentTime) {
-                    lastVideoTime = video.current.currentTime;
+                    lastVideoTime = video.current.currentTime
 
-                    canvasCtx.save();
-                    canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height);
+                    canvasCtx.save()
+                    canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height)
 
-                    trackingResult = faceTracker.detectForVideo(video.current, performance.now());
-                    setFaceTrackingResult(trackingResult);
-                    drawFaceLandmarks(trackingResult.faceLandmarks, drawingUtils, CAM_HEIGHT / 1000);
+                    trackingResult = faceTracker.detectForVideo(video.current, performance.now())
+                    setFaceTrackingResult(trackingResult)
+                    drawFaceLandmarks(trackingResult.faceLandmarks, drawingUtils, CAM_HEIGHT / 1000)
 
-                    trackingResult = bodyTracker.detectForVideo(video.current, performance.now());
-                    setBodyTrackingResult(trackingResult);
-                    drawBodyLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 500);
+                    trackingResult = bodyTracker.detectForVideo(video.current, performance.now())
+                    setBodyTrackingResult(trackingResult)
+                    drawBodyLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 500)
 
-                    trackingResult = handTracker.detectForVideo(video.current, performance.now());
-                    setHandTrackingResult(trackingResult);
-                    drawHandLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 1000);
+                    trackingResult = handTracker.detectForVideo(video.current, performance.now())
+                    setHandTrackingResult(trackingResult)
+                    drawHandLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 1000)
 
-                    canvasCtx.restore();
+                    canvasCtx.restore()
                 }
             },
             width: CAM_WIDTH,
             height: CAM_HEIGHT
-        });
-        camera.start();
+        })
+        camera.start()
 
         return function cleanup() {
-            camera.stop();
+            camera.stop()
             if (faceTracker) {
-                faceTracker.close();
+                faceTracker.close()
             }
             if (bodyTracker) {
-                bodyTracker.close();
+                bodyTracker.close()
             }
             if (handTracker) {
-                handTracker.close();
+                handTracker.close()
             }
-        };
-    }, []);
+        }
+    }, [])
 
     return (
         <div style={{ display: 'flex' }}>
@@ -95,5 +95,5 @@ export default function Home() {
                 <OrbitControls />
             </Canvas>
         </div>
-    );
+    )
 }
