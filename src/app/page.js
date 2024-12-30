@@ -1,10 +1,12 @@
 'use client'
 
+import { Radio } from "antd";
 import { Camera } from '@mediapipe/camera_utils'
 import { DrawingUtils } from '@mediapipe/tasks-vision'
 import { useEffect, useRef, useState } from 'react'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
+import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
 import Avatar from '@/components/avatar'
 import { createTrackers, drawFaceLandmarks, drawBodyLandmarks, drawHandLandmarks } from '@/utils/tracker'
@@ -16,8 +18,24 @@ const CAM_WIDTH = 1280
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
 
+const avatarCreatorConfig = {
+    bodyType: 'fullbody',
+    quickStart: true,
+    language: 'en',
+    clearCache: false,
+}
+
+const avatarCreatorStyle = { 
+    width: '100%',
+    height: '100vh', 
+    border: 'none' 
+}
+
 
 export default function Home() {
+    const [inAvatarCreator, setInAvatarCreator] = useState(false)
+
+    const [avatarUrl, setAvatarUrl] = useState('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
     const [faceTrackingResult, setFaceTrackingResult] = useState(null)
     const [bodyTrackingResult, setBodyTrackingResult] = useState(null)
     const [handTrackingResult, setHandTrackingResult] = useState(null)
@@ -78,22 +96,41 @@ export default function Home() {
     }, [])
 
     return (
-        <div style={{ display: 'flex' }}>
-            <div style={{ position: 'relative', width: CAM_WIDTH, height: CAM_HEIGHT }}>
-                <video ref={video} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ width: '100%', transform: 'scaleX(-1)' }}></video>
-                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: 'scaleX(-1)' }}></canvas>
-            </div>
-            <Canvas style={{ width: '100vw', height: '100vh' }} >
-                <color attach='background' args={['grey']} />
-                <ambientLight intensity={0.1} />
-                <directionalLight position={[0, 0, 1]} />
-                <Avatar 
-                    userFace={faceTrackingResult} 
-                    userBody={bodyTrackingResult}
-                    userHands={handTrackingResult}
-                />
-                <OrbitControls />
-            </Canvas>
-        </div>
+        <>
+            <video hidden ref={video} ></video>
+            <canvas hidden ref={canvas}></canvas>
+            {!inAvatarCreator && 
+            <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+                <Canvas >
+                    <color attach='background' args={['grey']} />
+                    <ambientLight intensity={0.1} />
+                    <directionalLight position={[0, 0, 1]} />
+                    <Avatar 
+                        avatarUrl={avatarUrl}
+                        userFace={faceTrackingResult} 
+                        userBody={bodyTrackingResult}
+                        userHands={handTrackingResult}
+                    />
+                    <OrbitControls />
+                </Canvas>
+            </div>}
+            {inAvatarCreator && 
+            <AvatarCreator 
+                subdomain='mesekai-ptasby' 
+                config={avatarCreatorConfig} 
+                style={avatarCreatorStyle}
+                onAvatarExported={(event) => {
+                    setAvatarUrl(`${event.data.url}?morphTargets=ARKit`);
+                }}
+            />}
+            <Radio.Group style={{ position: 'absolute', top: '1%', left: '45%' }} 
+                onChange={(event) => {
+                    setInAvatarCreator(event.target.value == 'customize')
+                }} 
+            >
+                <Radio.Button value='avatar' style={{ width: '50%' }}>Mesekai</Radio.Button>
+                <Radio.Button value='customize' style={{ width: '50%' }}>Customize</Radio.Button>
+            </Radio.Group>
+        </>
     )
 }

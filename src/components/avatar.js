@@ -3,8 +3,8 @@ import { useGLTF } from '@react-three/drei'
 import { animateBody, animateFace, animateHands, rotateHead } from '@/utils/solver'
 
 
-export default function Avatar({ userFace, userBody, userHands }) {
-    const { nodes, _ } = useGLTF('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit')
+export default function Avatar({ avatarUrl, userFace, userBody, userHands }) {
+    const { nodes, _ } = useGLTF(avatarUrl)
     const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
 
     if (userFace) {
