@@ -33,7 +33,7 @@ const avatarCreatorStyle = {
 
 
 export default function Home() {
-    const [inAvatarCreator, setInAvatarCreator] = useState(false)
+    const [inMesekai, setInMesekai] = useState(true)
 
     const [avatarUrl, setAvatarUrl] = useState('https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit');
     const [faceTrackingResult, setFaceTrackingResult] = useState(null)
@@ -99,7 +99,7 @@ export default function Home() {
         <>
             <video hidden ref={video} ></video>
             <canvas hidden ref={canvas}></canvas>
-            {!inAvatarCreator && 
+            {inMesekai && 
             <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
                 <Canvas >
                     <color attach='background' args={['grey']} />
@@ -114,22 +114,25 @@ export default function Home() {
                     <OrbitControls />
                 </Canvas>
             </div>}
-            {inAvatarCreator && 
+            {!inMesekai && 
             <AvatarCreator 
                 subdomain='mesekai-ptasby' 
                 config={avatarCreatorConfig} 
                 style={avatarCreatorStyle}
                 onAvatarExported={(event) => {
-                    setAvatarUrl(`${event.data.url}?morphTargets=ARKit`);
+                    setAvatarUrl(`${event.data.url}?morphTargets=ARKit`)
+                    setInMesekai(true)
                 }}
             />}
-            <Radio.Group style={{ position: 'absolute', top: '1%', left: '45%' }} 
+            <Radio.Group 
+                style={{ position: 'absolute', top: '1%', left: '45%' }} 
+                value={inMesekai}
                 onChange={(event) => {
-                    setInAvatarCreator(event.target.value == 'customize')
-                }} 
+                    setInMesekai(event.target.value)
+                }}
             >
-                <Radio.Button value='avatar' style={{ width: '50%' }}>Mesekai</Radio.Button>
-                <Radio.Button value='customize' style={{ width: '50%' }}>Customize</Radio.Button>
+                <Radio.Button value={true} style={{ width: '50%' }}>Mesekai</Radio.Button>
+                <Radio.Button value={false} style={{ width: '50%' }}>Customize</Radio.Button>
             </Radio.Group>
         </>
     )
