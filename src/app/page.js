@@ -11,6 +11,7 @@ import { Canvas } from '@react-three/fiber'
 import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
 import Avatar from '@/components/avatar'
+import CameraSelf from '@/components/camera'
 import {
     createTrackers,
     drawFaceLandmarks,
@@ -106,9 +107,11 @@ export default function Home() {
 
     return (
         <>
-            <video hidden ref={video}></video>
-            <canvas hidden ref={canvas}></canvas>
+            <CameraSelf
+                video={video}
+                canvas={canvas}
 
+            />
             {inMesekai && (
                 <div
                     style={{
