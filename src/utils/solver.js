@@ -102,7 +102,7 @@ export function rotateHead(bones, faceMatrix) {
 }
 
 
-export function animateBody(bones, landmarks) {
+export function animateBody(bones, landmarks, defaultLegQuats) {
     // cache visible landmarks, else set to zero vector
     landmarks.forEach((landmark, lm_idx) => {
         if (landmark.visibility > VIS_THRESH) {
@@ -191,7 +191,15 @@ export function animateBody(bones, landmarks) {
                 }
             }
         }
-    }               
+    } else {
+        // reset legs if not detected
+        bones.LeftUpLeg.quaternion.copy(defaultLegQuats[0])
+        bones.LeftLeg.quaternion.copy(defaultLegQuats[1])
+        bones.LeftFoot.quaternion.copy(defaultLegQuats[2])
+        bones.RightUpLeg.quaternion.copy(defaultLegQuats[3])
+        bones.RightLeg.quaternion.copy(defaultLegQuats[4])
+        bones.RightFoot.quaternion.copy(defaultLegQuats[5])
+    }        
 } 
 
 
