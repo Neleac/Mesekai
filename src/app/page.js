@@ -107,74 +107,73 @@ export default function Home() {
 
     return (
         <>
-            {inMesekai && (
-                <div
+            <div
+                hidden={!inMesekai}
+                style={{
+                    position: 'relative',
+                    width: '100vw',
+                    height: '100vh',
+                }}
+            >
+                <CameraSelf video={video} canvas={canvas}/>
+                
+                {/* Avatar scene */}
+                <Canvas
                     style={{
-                        position: 'relative',
-                        width: '100vw',
-                        height: '100vh',
+                        zIndex: -1,
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
                     }}
                 >
-                <CameraSelf video={video} canvas={canvas}/>
-                    {/* Avatar scene */}
-                    <Canvas
-                        style={{
-                            zIndex: -1,
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                        }}
-                    >
-                        <Avatar
-                            avatarUrl={avatarUrl}
-                            userFace={faceTrackingResult}
-                            userBody={bodyTrackingResult}
-                            userHands={handTrackingResult}
-                        />
-                        <Environment preset={environment} background={true} />
-                        <OrbitControls />
-                    </Canvas>
+                    <Avatar
+                        avatarUrl={avatarUrl}
+                        userFace={faceTrackingResult}
+                        userBody={bodyTrackingResult}
+                        userHands={handTrackingResult}
+                    />
+                    <Environment preset={environment} background={true} />
+                    <OrbitControls />
+                </Canvas>
 
-                    {/* Environment selector */}
-                    <Dropdown
-                        menu={{
-                            items: environments,
-                            onClick: (event) => {
-                                setEnvironment(event.key)
-                            },
-                        }}
-                    >
-                        <Button>
-                            <Space>
-                                Environment
-                                <DownOutlined />
-                            </Space>
-                        </Button>
-                    </Dropdown>
-                </div>
-            )}
+                {/* Environment selector */}
+                <Dropdown
+                    menu={{
+                        items: environments,
+                        onClick: (event) => {
+                            setEnvironment(event.key)
+                        },
+                    }}
+                >
+                    <Button>
+                        <Space>
+                            Environment
+                            <DownOutlined />
+                        </Space>
+                    </Button>
+                </Dropdown>
+            </div>
 
-            {!inMesekai && (
-                <AvatarCreator
-                    subdomain='mesekai-ptasby'
-                    config={{
-                        bodyType: 'fullbody',
-                        quickStart: true,
-                        language: 'en',
-                        clearCache: false,
-                    }}
-                    style={{
-                        width: '100%',
-                        height: '100vh',
-                        border: 'none',
-                    }}
-                    onAvatarExported={(event) => {
-                        setAvatarUrl(`${event.data.url}?morphTargets=ARKit`)
-                        setInMesekai(true)
-                    }}
-                />
-            )}
+            <AvatarCreator
+                hidden={inMesekai}
+                subdomain='mesekai-ptasby'
+                config={{
+                    bodyType: 'fullbody',
+                    quickStart: true,
+                    language: 'en',
+                    clearCache: false,
+                }}
+                style={{
+                    width: '100%',
+                    height: '100vh',
+                    border: 'none',
+                }}
+                onAvatarExported={(event) => {
+                    setAvatarUrl(`${event.data.url}?morphTargets=ARKit`)
+                    setInMesekai(true)
+                }}
+            />
 
             {/* AvatarCreator toggle */}
             <Radio.Group
