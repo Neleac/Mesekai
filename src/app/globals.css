@@ -25,3 +25,10 @@ body {
     text-wrap: balance;
   }
 }
+
+/* camera.js */
+#cam-video {
+  transform: scaleX(-1);
+  border-radius: 30px;
+  box-shadow: 30px 30px 30px rgba(0, 0, 0, 0.1);
+}

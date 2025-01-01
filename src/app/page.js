@@ -107,23 +107,19 @@ export default function Home() {
 
     return (
         <>
-            <CameraSelf
-                video={video}
-                canvas={canvas}
-
-            />
             {inMesekai && (
                 <div
                     style={{
                         position: 'relative',
-                        width: '100%',
+                        width: '100vw',
                         height: '100vh',
                     }}
                 >
+                <CameraSelf video={video} canvas={canvas}/>
                     {/* Avatar scene */}
                     <Canvas
                         style={{
-                            position: 'absolute',
+                            zIndex: -1,
                             top: 0,
                             left: 0,
                             width: '100%',
