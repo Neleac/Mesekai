@@ -186,25 +186,26 @@ export default function Home() {
                 </Space>
             </div>
 
-            <AvatarCreator
-                hidden={inMesekai}
-                subdomain='mesekai-ptasby'
-                config={{
-                    bodyType: 'fullbody',
-                    quickStart: true,
-                    language: 'en',
-                    clearCache: false,
-                }}
-                style={{
-                    width: '100%',
-                    height: '100vh',
-                    border: 'none',
-                }}
-                onAvatarExported={(event) => {
-                    setAvatarUrl(`${event.data.url}?morphTargets=ARKit`)
-                    setInMesekai(true)
-                }}
-            />
+            {!inMesekai && (
+                <AvatarCreator
+                    subdomain='mesekai-ptasby'
+                    config={{
+                        bodyType: 'fullbody',
+                        quickStart: true,
+                        language: 'en',
+                        clearCache: false,
+                    }}
+                    style={{
+                        width: '100%',
+                        height: '100vh',
+                        border: 'none',
+                    }}
+                    onAvatarExported={(event) => {
+                        setAvatarUrl(`${event.data.url}?morphTargets=ARKit`)
+                        setInMesekai(true)
+                    }}
+                />
+            )}
 
             {/* avatar creator toggle */}
             <Radio.Group
