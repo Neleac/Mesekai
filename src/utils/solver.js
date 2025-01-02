@@ -37,13 +37,13 @@ const HAND_SMOOTHING = 0.5
 
 // cache landmarks and transforms to avoid reallocation
 const poseLms = new Array(33)
-for (let lm_idx = 0; lm_idx < poseLms.length; lm_idx++) {
-    poseLms[lm_idx] = new Vector3()
+for (let lmIdx = 0; lmIdx < poseLms.length; lmIdx++) {
+    poseLms[lmIdx] = new Vector3()
 }
 
 const handLms = new Array(21)
-for (let lm_idx = 0; lm_idx < handLms.length; lm_idx++) {
-    handLms[lm_idx] = new Vector3()
+for (let lmIdx = 0; lmIdx < handLms.length; lmIdx++) {
+    handLms[lmIdx] = new Vector3()
 }
 
 const headRotMat = new Matrix4()
@@ -90,25 +90,25 @@ export function rotateHead(bones, faceMatrix) {
 
     headEuler.set(headEuler.x / 2, -headEuler.y, -headEuler.z)
     headQuat.setFromEuler(headEuler)
-    bones.Head.quaternion.slerp(headQuat, HEAD_SMOOTHING)
+    bones[0].quaternion.slerp(headQuat, HEAD_SMOOTHING)
     
     headEuler.set(headEuler.x / 10, -headEuler.y / 5, -headEuler.z / 5)
     headQuat.setFromEuler(headEuler)
-    bones.Neck.quaternion.slerp(headQuat, HEAD_SMOOTHING)
+    bones[1].quaternion.slerp(headQuat, HEAD_SMOOTHING)
     
     headEuler.set(headEuler.x / 20, -headEuler.y / 10, -headEuler.z / 10)
     headQuat.setFromEuler(headEuler)
-    bones.Spine2.quaternion.slerp(headQuat, HEAD_SMOOTHING)  
+    bones[2].quaternion.slerp(headQuat, HEAD_SMOOTHING)  
 }
 
 
-export function animateBody(bones, landmarks, defaultLegQuats) {
+export function animateBody(bodyBones, legBones, landmarks, defaultLegQuats) {
     // cache visible landmarks, else set to zero vector
-    landmarks.forEach((landmark, lm_idx) => {
+    landmarks.forEach((landmark, lmIdx) => {
         if (landmark.visibility > VIS_THRESH) {
-            poseLms[lm_idx].set(-landmark.x, -landmark.y, -landmark.z)
+            poseLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
         } else {
-            poseLms[lm_idx].set(0, 0, 0)
+            poseLms[lmIdx].set(0, 0, 0)
         }
     })
 
@@ -127,20 +127,20 @@ export function animateBody(bones, landmarks, defaultLegQuats) {
         spineEuler.setFromRotationMatrix(shoulderRotMat)
         spineEuler.set(spineEuler.x / 4, spineEuler.y / 2, spineEuler.z / 2)
         spineQuat.setFromEuler(spineEuler)
-        bones.Spine.quaternion.slerp(spineQuat, BODY_SMOOTHING)
-        bones.Spine1.quaternion.slerp(spineQuat, BODY_SMOOTHING)
+        bodyBones[0].quaternion.slerp(spineQuat, BODY_SMOOTHING)
+        bodyBones[1].quaternion.slerp(spineQuat, BODY_SMOOTHING)
 
         // user left arm, avatar right arm
         createShoulderAxes(poseLms[rSHOULDER], poseLms[lSHOULDER])
         if (poseLms[lELBOW].length() > 0) {
-            solveRotation(bones.RightArm, poseLms[lSHOULDER], poseLms[lELBOW], BODY_SMOOTHING)
+            solveRotation(bodyBones[2], poseLms[lSHOULDER], poseLms[lELBOW], BODY_SMOOTHING)
             if (poseLms[lWRIST].length() > 0) {
                 updateAxes()
-                solveRotation(bones.RightForeArm, poseLms[lELBOW], poseLms[lWRIST], BODY_SMOOTHING)
+                solveRotation(bodyBones[3], poseLms[lELBOW], poseLms[lWRIST], BODY_SMOOTHING)
                 if (poseLms[lINDEX].length() > 0 && poseLms[lPINKY].length() > 0) {
                     poseLms[lINDEX].lerp(poseLms[lPINKY], 0.5)
                     updateAxes()
-                    solveRotation(bones.RightHand, poseLms[lWRIST], poseLms[lINDEX], BODY_SMOOTHING)
+                    solveRotation(bodyBones[4], poseLms[lWRIST], poseLms[lINDEX], BODY_SMOOTHING)
                 }
             }
         }
@@ -148,14 +148,14 @@ export function animateBody(bones, landmarks, defaultLegQuats) {
         // user right arm, avatar left arm
         createShoulderAxes(poseLms[lSHOULDER], poseLms[rSHOULDER])
         if (poseLms[rELBOW].length() > 0) {
-            solveRotation(bones.LeftArm, poseLms[rSHOULDER], poseLms[rELBOW], BODY_SMOOTHING)
+            solveRotation(bodyBones[5], poseLms[rSHOULDER], poseLms[rELBOW], BODY_SMOOTHING)
             if (poseLms[rWRIST].length() > 0) {
                 updateAxes()
-                solveRotation(bones.LeftForeArm, poseLms[rELBOW], poseLms[rWRIST], BODY_SMOOTHING)
+                solveRotation(bodyBones[6], poseLms[rELBOW], poseLms[rWRIST], BODY_SMOOTHING)
                 if (poseLms[rINDEX].length() > 0 && poseLms[rPINKY].length() > 0) {
                     poseLms[rINDEX].lerp(poseLms[rPINKY], 0.5)
                     updateAxes()
-                    solveRotation(bones.LeftHand, poseLms[rWRIST], poseLms[rINDEX], BODY_SMOOTHING)
+                    solveRotation(bodyBones[7], poseLms[rWRIST], poseLms[rINDEX], BODY_SMOOTHING)
                 }
             }
         }
@@ -167,13 +167,13 @@ export function animateBody(bones, landmarks, defaultLegQuats) {
         // user left leg, avatar right leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
         if (poseLms[lKNEE].length() > 0) {
-            solveRotation(bones.RightUpLeg, poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true)
+            solveRotation(legBones[0], poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true)
             if (poseLms[lANKLE].length() > 0) {
                 updateAxes()
-                solveRotation(bones.RightLeg, poseLms[lKNEE], poseLms[lANKLE], BODY_SMOOTHING)
+                solveRotation(legBones[1], poseLms[lKNEE], poseLms[lANKLE], BODY_SMOOTHING)
                 if (poseLms[lHEEL].length() > 0) {
                     updateAxes()
-                    solveRotation(bones.RightFoot, poseLms[lANKLE], poseLms[lHEEL], BODY_SMOOTHING)
+                    solveRotation(legBones[2], poseLms[lANKLE], poseLms[lHEEL], BODY_SMOOTHING)
                 }
             }
         }
@@ -181,33 +181,28 @@ export function animateBody(bones, landmarks, defaultLegQuats) {
         // user right leg, avatar left leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
         if (poseLms[rKNEE].length() > 0) {
-            solveRotation(bones.LeftUpLeg, poseLms[rHIP], poseLms[rKNEE], BODY_SMOOTHING, true)
+            solveRotation(legBones[3], poseLms[rHIP], poseLms[rKNEE], BODY_SMOOTHING, true)
             if (poseLms[rANKLE].length() > 0) {
                 updateAxes()
-                solveRotation(bones.LeftLeg, poseLms[rKNEE], poseLms[rANKLE], BODY_SMOOTHING)
+                solveRotation(legBones[4], poseLms[rKNEE], poseLms[rANKLE], BODY_SMOOTHING)
                 if (poseLms[rHEEL].length() > 0) {
                     updateAxes()
-                    solveRotation(bones.LeftFoot, poseLms[rANKLE], poseLms[rHEEL], BODY_SMOOTHING)
+                    solveRotation(legBones[5], poseLms[rANKLE], poseLms[rHEEL], BODY_SMOOTHING)
                 }
             }
         }
     } else {
         // reset legs if not detected
-        bones.LeftUpLeg.quaternion.copy(defaultLegQuats[0])
-        bones.LeftLeg.quaternion.copy(defaultLegQuats[1])
-        bones.LeftFoot.quaternion.copy(defaultLegQuats[2])
-        bones.RightUpLeg.quaternion.copy(defaultLegQuats[3])
-        bones.RightLeg.quaternion.copy(defaultLegQuats[4])
-        bones.RightFoot.quaternion.copy(defaultLegQuats[5])
+        resetRotations(legBones, defaultLegQuats)
     }        
-} 
+}
 
 
 export function animateHands(bones, trackingResult) {
     for (let handIdx = 0; handIdx < trackingResult.handedness.length; handIdx++) {
         // cache landmarks
-        trackingResult.worldLandmarks[handIdx].forEach((landmark, lm_idx) => {
-            handLms[lm_idx].set(-landmark.x, -landmark.y, -landmark.z)
+        trackingResult.worldLandmarks[handIdx].forEach((landmark, lmIdx) => {
+            handLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
         })
 
         if (trackingResult.handedness[handIdx][0]['categoryName'] == 'Left') {
@@ -216,6 +211,22 @@ export function animateHands(bones, trackingResult) {
             solveHand(bones.LeftHand, 'Right')
         }
     }
+}
+
+
+export function resetBlendshapes(meshes) {
+    for (const mesh of meshes) {
+        for (const key in mesh.morphTargetInfluences) {
+            mesh.morphTargetInfluences[key] = 0
+        }
+    }
+}
+
+
+export function resetRotations(bones, quats) {
+    bones.forEach((bone, boneIdx) => {
+        bone.quaternion.copy(quats[boneIdx])
+    })
 }
 
 

@@ -1,46 +1,101 @@
-import { useEffect } from 'react'
-
 import { useGLTF } from '@react-three/drei'
-import { Quaternion } from 'three'
 
-import { animateBody, animateFace, animateHands, rotateHead } from '@/utils/solver'
+import { animateBody, animateFace, animateHands, rotateHead, resetBlendshapes, resetRotations } from '@/utils/solver'
 
+let headBones, bodyBones, handBones, legBones, meshes
+const defaultHeadQuats = []
+const defaultBodyQuats = []
+const defaultHandQuats = []
 const defaultLegQuats = []
-for (let i = 0; i < 6; i++) {
-    defaultLegQuats.push(new Quaternion())
+
+
+function getHandBones(bone) {
+    for (const child of bone.children) {
+        handBones.push(child)
+        getHandBones(child)
+    }
+}
+
+
+function getDefaultHandQuats(bone) {
+    for (const child of bone.children) {
+        defaultHandQuats.push(child.quaternion.clone())
+        getDefaultHandQuats(child)
+    }
 }
 
 
 export default function Avatar({ avatarUrl, userFace, userBody, userHands }) {
     const { nodes, _ } = useGLTF(avatarUrl)
+    meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
+    headBones = [nodes.Head, nodes.Neck, nodes.Spine2]
+    bodyBones = [
+        nodes.Spine, nodes.Spine1, 
+        nodes.RightArm, nodes.RightForeArm, nodes.RightHand, 
+        nodes.LeftArm, nodes.LeftForeArm, nodes.LeftHand
+    ]
+    legBones = [
+        nodes.RightUpLeg, nodes.RightLeg, nodes.RightFoot,
+        nodes.LeftUpLeg, nodes.LeftLeg, nodes.LeftFoot
+    ]
+    handBones = []
+    for (const bone of [nodes.LeftHand, nodes.RightHand]) {
+        getHandBones(bone)
+    }
 
-    // store default leg rotations
-    useEffect(() => {
-        defaultLegQuats[0].copy(nodes.LeftUpLeg.quaternion)
-        defaultLegQuats[1].copy(nodes.LeftLeg.quaternion)
-        defaultLegQuats[2].copy(nodes.LeftFoot.quaternion)
-        defaultLegQuats[3].copy(nodes.RightUpLeg.quaternion)
-        defaultLegQuats[4].copy(nodes.RightLeg.quaternion)
-        defaultLegQuats[5].copy(nodes.RightFoot.quaternion)
-    }, [])
+    // store default rotations
+    if (defaultHeadQuats.length == 0) {
+        for (const bone of headBones) {
+            defaultHeadQuats.push(bone.quaternion.clone())
+        }
+    }
 
+    if (defaultBodyQuats.length == 0) {
+        for (const bone of bodyBones) {
+            defaultBodyQuats.push(bone.quaternion.clone())
+        }
+    }
+
+    if (defaultHandQuats.length == 0) {
+        for (const bone of [nodes.LeftHand, nodes.RightHand]) {
+            getDefaultHandQuats(bone)
+        }
+    }
+
+    if (defaultLegQuats.length == 0) {
+        for (const bone of legBones) {
+            defaultLegQuats.push(bone.quaternion.clone())
+        }
+    }
+
+    // set rotations based on tracking result, or reset to default
+    // TODO: don't reset to default every render
     if (userFace) {
         if (userFace.faceBlendshapes && userFace.faceBlendshapes.length > 0) {
-            const meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
             animateFace(meshes, userFace.faceBlendshapes[0].categories)
         }
 
         if (userFace.facialTransformationMatrixes && userFace.facialTransformationMatrixes.length > 0) {
-            rotateHead(nodes, userFace.facialTransformationMatrixes[0].data)
+            rotateHead(headBones, userFace.facialTransformationMatrixes[0].data)
         }
+    } else {
+        resetBlendshapes(meshes)
+        resetRotations(headBones, defaultHeadQuats)
     }
 
-    if (userBody && userBody.worldLandmarks && userBody.worldLandmarks.length > 0) {
-        animateBody(nodes, userBody.worldLandmarks[0], defaultLegQuats)
+    if (userBody) {
+        if (userBody.worldLandmarks && userBody.worldLandmarks.length > 0) {
+            animateBody(bodyBones, legBones, userBody.worldLandmarks[0], defaultLegQuats)
+        }
+    } else {
+        resetRotations(bodyBones, defaultBodyQuats)
+        resetRotations(legBones, defaultLegQuats)
     }
 
     if (userHands) {
         animateHands(nodes, userHands)
+    } else {
+        resetRotations(handBones, defaultHandQuats)
     }
     
     return (

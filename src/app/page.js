@@ -1,7 +1,7 @@
 'use client'
 
-import { Button, Radio, Dropdown, Space } from 'antd'
-import { DownOutlined, SmileOutlined, UserOutlined } from '@ant-design/icons'
+import { Button, Dropdown, Radio, Space, Switch } from 'antd'
+import { DownOutlined } from '@ant-design/icons'
 
 import { Camera } from '@mediapipe/camera_utils'
 import { DrawingUtils } from '@mediapipe/tasks-vision'
@@ -26,18 +26,42 @@ const CAM_WIDTH = 1280
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
 
-const environments = [
-    { label: 'apartment', key: 'apartment' },
-    { label: 'city', key: 'city' },
-    { label: 'dawn', key: 'dawn' },
-    { label: 'forest', key: 'forest' },
-    { label: 'lobby', key: 'lobby' },
-    { label: 'night', key: 'night' },
-    { label: 'park', key: 'park' },
-    { label: 'studio', key: 'studio' },
-    { label: 'sunset', key: 'sunset' },
-    { label: 'warehouse', key: 'warehouse' },
+const scenes = [
+    { label: 'Apartment', key: 'apartment' },
+    { label: 'City', key: 'city' },
+    { label: 'Dawn', key: 'dawn' },
+    { label: 'Forest', key: 'forest' },
+    { label: 'Lobby', key: 'lobby' },
+    { label: 'Night', key: 'night' },
+    { label: 'Park', key: 'park' },
+    { label: 'Studio', key: 'studio' },
+    { label: 'Sunset', key: 'sunset' },
+    { label: 'Warehouse', key: 'warehouse' },
 ]
+
+let trackFace = true
+let trackBody = false
+let trackHands = false
+let trackingResult
+function processFrame(frame, drawingUtils, setFaceTrackingResult, setBodyTrackingResult, setHandTrackingResult) {
+    if (trackFace) {
+        trackingResult = faceTracker.detectForVideo(frame, performance.now())
+        setFaceTrackingResult(trackingResult)
+        drawFaceLandmarks(trackingResult.faceLandmarks, drawingUtils, CAM_HEIGHT / 1000)
+    }
+
+    if (trackBody) {
+        trackingResult = bodyTracker.detectForVideo(frame, performance.now())
+        setBodyTrackingResult(trackingResult)
+        drawBodyLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 500)
+    }
+
+    if (trackHands) {
+        trackingResult = handTracker.detectForVideo(frame, performance.now())
+        setHandTrackingResult(trackingResult)
+        drawHandLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 1000)
+    }
+}
 
 
 export default function Home() {
@@ -48,7 +72,7 @@ export default function Home() {
     const [faceTrackingResult, setFaceTrackingResult] = useState(null)
     const [bodyTrackingResult, setBodyTrackingResult] = useState(null)
     const [handTrackingResult, setHandTrackingResult] = useState(null)
-    const [environment, setEnvironment] = useState('sunset')
+    const [scene, setScene] = useState('sunset')
 
     const video = useRef(null)
     const canvas = useRef(null)
@@ -56,7 +80,6 @@ export default function Home() {
         const canvasCtx = canvas.current.getContext('2d')
         const drawingUtils = new DrawingUtils(canvasCtx)
         let lastVideoTime = -1
-        let trackingResult
 
         const camera = new Camera(video.current, {
             onFrame: async () => {
@@ -67,22 +90,9 @@ export default function Home() {
 
                 if (lastVideoTime != video.current.currentTime) {
                     lastVideoTime = video.current.currentTime
-
                     canvasCtx.save()
                     canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height)
-
-                    trackingResult = faceTracker.detectForVideo(video.current, performance.now())
-                    setFaceTrackingResult(trackingResult)
-                    drawFaceLandmarks(trackingResult.faceLandmarks, drawingUtils, CAM_HEIGHT / 1000)
-
-                    trackingResult = bodyTracker.detectForVideo(video.current, performance.now())
-                    setBodyTrackingResult(trackingResult)
-                    drawBodyLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 500)
-
-                    trackingResult = handTracker.detectForVideo(video.current, performance.now())
-                    setHandTrackingResult(trackingResult)
-                    drawHandLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 1000)
-
+                    processFrame(video.current, drawingUtils, setFaceTrackingResult, setBodyTrackingResult, setHandTrackingResult)
                     canvasCtx.restore()
                 }
             },
@@ -93,15 +103,6 @@ export default function Home() {
 
         return function cleanup() {
             camera.stop()
-            if (faceTracker) {
-                faceTracker.close()
-            }
-            if (bodyTracker) {
-                bodyTracker.close()
-            }
-            if (handTracker) {
-                handTracker.close()
-            }
         }
     }, [])
 
@@ -117,7 +118,7 @@ export default function Home() {
             >
                 <CameraSelf video={video} canvas={canvas}/>
                 
-                {/* Avatar scene */}
+                {/* avatar scene */}
                 <Canvas
                     style={{
                         zIndex: -1,
@@ -133,26 +134,56 @@ export default function Home() {
                         userBody={bodyTrackingResult}
                         userHands={handTrackingResult}
                     />
-                    <Environment preset={environment} background={true} />
+                    <Environment preset={scene} background={true} />
                     <OrbitControls />
                 </Canvas>
 
-                {/* Environment selector */}
-                <Dropdown
-                    menu={{
-                        items: environments,
-                        onClick: (event) => {
-                            setEnvironment(event.key)
-                        },
+                <Space direction='horizontal' align='start'
+                    style={{
+                        position: 'absolute',
+                        top: '1%',
+                        left: '1%',
                     }}
                 >
-                    <Button>
-                        <Space>
-                            Environment
-                            <DownOutlined />
-                        </Space>
-                    </Button>
-                </Dropdown>
+                    {/* body part tracking selection */}
+                    <Space direction='vertical'>
+                        <Switch checkedChildren="Face" unCheckedChildren="Face" defaultChecked 
+                            onChange={(checked) => {
+                                trackFace = checked
+                                setFaceTrackingResult(null)
+                            }}
+                        />
+                        <Switch checkedChildren="Body" unCheckedChildren="Body" 
+                            onChange={(checked) => {
+                                trackBody = checked
+                                setBodyTrackingResult(null)
+                            }}
+                        />
+                        <Switch checkedChildren="Hands" unCheckedChildren="Hands" 
+                            onChange={(checked) => {
+                                trackHands = checked
+                                setHandTrackingResult(null)
+                            }}
+                        />
+                    </Space>
+
+                    {/* scene selection */}
+                    <Dropdown
+                        menu={{
+                            items: scenes,
+                            onClick: (event) => {
+                                setScene(event.key)
+                            },
+                        }}
+                    >
+                        <Button>
+                            <Space>
+                                Scene
+                                <DownOutlined />
+                            </Space>
+                        </Button>
+                    </Dropdown>
+                </Space>
             </div>
 
             <AvatarCreator
@@ -175,9 +206,9 @@ export default function Home() {
                 }}
             />
 
-            {/* AvatarCreator toggle */}
+            {/* avatar creator toggle */}
             <Radio.Group
-                style={{ position: 'absolute', top: '1%', left: '45%' }}
+                style={{ position: 'absolute', bottom: '1%', left: '1%' }}
                 value={inMesekai}
                 onChange={(event) => {
                     setInMesekai(event.target.value)
