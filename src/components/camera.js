@@ -14,7 +14,7 @@ export default function CameraDisplay({video, canvas}){
                 style={{ position: 'absolute', top: '1%', right: '1%' }}
                 onClick={() => {setHideCam(prevState => !prevState)}}
             />
-            <div hidden={hideCam} style={{ position: 'absolute', top: '1%', right: '1%', width: '30%', height: '30%' }}>
+            <div hidden={hideCam} style={{ position: 'absolute', top: '1%', right: '1%'}}>
                 <video ref={video} id='cam-video'></video>
                 <canvas ref={canvas} style={{ position: 'absolute', top: 0, left: 0, transform: 'scaleX(-1)', width: '100%', height: '100%'}}></canvas>
             </div>

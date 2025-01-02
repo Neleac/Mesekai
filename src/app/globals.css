@@ -29,6 +29,7 @@ body {
 /* camera.js */
 #cam-video {
   transform: scaleX(-1);
+  width: 500px;
   border-radius: 30px;
   box-shadow: 30px 30px 30px rgba(0, 0, 0, 0.1);
 }
