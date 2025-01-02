@@ -11,7 +11,7 @@ import { Canvas } from '@react-three/fiber'
 import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
 import Avatar from '@/components/avatar'
-import CameraSelf from '@/components/camera'
+import CameraDisplay from '@/components/camera'
 import {
     createTrackers,
     drawFaceLandmarks,
@@ -116,7 +116,7 @@ export default function Home() {
                     height: '100vh',
                 }}
             >
-                <CameraSelf video={video} canvas={canvas}/>
+                <CameraDisplay video={video} canvas={canvas}/>
                 
                 {/* avatar scene */}
                 <Canvas
