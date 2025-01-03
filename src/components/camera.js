@@ -2,7 +2,7 @@ import { FloatButton } from 'antd';
 import { CameraTwoTone, CameraOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import '../app/globals.css';
-
+import {CAM_WIDTH,CAM_HEIGHT } from "../utils/constants"
 
 export default function CameraDisplay({video, canvas}){
     const [hideCam, setHideCam] = useState(false);
@@ -16,7 +16,7 @@ export default function CameraDisplay({video, canvas}){
             />
             <div hidden={hideCam} style={{ position: 'absolute', top: '1%', right: '1%'}}>
                 <video ref={video} id='cam-video'></video>
-                <canvas ref={canvas} style={{ position: 'absolute', top: 0, left: 0, transform: 'scaleX(-1)', width: '100%', height: '100%'}}></canvas>
+                <canvas ref={canvas} width={CAM_WIDTH} height={CAM_HEIGHT} style={{ position: 'absolute', top: 0, left: 0, transform: 'scaleX(-1)', width: '100%', height: '100%'}}></canvas>
             </div>
         </>
     )

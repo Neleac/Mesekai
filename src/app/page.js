@@ -19,9 +19,7 @@ import {
     drawHandLandmarks,
 } from '@/utils/tracker'
 
-
-const CAM_HEIGHT = 720
-const CAM_WIDTH = 1280
+import {CAM_WIDTH,CAM_HEIGHT } from "../utils/constants"
 
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
