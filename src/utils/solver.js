@@ -1,5 +1,8 @@
 import { Euler, Matrix4, Quaternion, Vector3, Matrix3, MathUtils } from 'three'
 
+import { LM_VIS_THRESH, HEAD_SMOOTHING, BODY_SMOOTHING, HAND_SMOOTHING } from '@/utils/constants'
+
+
 // landmark indices
 const lSHOULDER = 11
 const rSHOULDER = 12
@@ -27,13 +30,6 @@ const MIDDLE = 9
 const RING = 13
 const PINKY = 17
 const FINGERS = [THUMB, INDEX, MIDDLE, RING, PINKY]
-
-const VIS_THRESH = 0.5 // min landmark visibility to be used for tracking
-
-// lower = smoother, higher = more responsive
-const HEAD_SMOOTHING = 0.75
-const BODY_SMOOTHING = 0.25
-const HAND_SMOOTHING = 0.5
 
 // cache landmarks and transforms to avoid reallocation
 const poseLms = new Array(33)
@@ -105,7 +101,7 @@ export function rotateHead(bones, faceMatrix) {
 export function animateBody(bodyBones, legBones, landmarks, defaultLegQuats) {
     // cache visible landmarks, else set to zero vector
     landmarks.forEach((landmark, lmIdx) => {
-        if (landmark.visibility > VIS_THRESH) {
+        if (landmark.visibility > LM_VIS_THRESH) {
             poseLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
         } else {
             poseLms[lmIdx].set(0, 0, 0)

@@ -1,11 +1,13 @@
 import { FloatButton } from 'antd';
 import { CameraTwoTone, CameraOutlined } from '@ant-design/icons'
 import { useState } from 'react'
-import '../app/globals.css';
-import {CAM_WIDTH,CAM_HEIGHT } from "../utils/constants"
 
-export default function CameraDisplay({video, canvas}){
-    const [hideCam, setHideCam] = useState(false);
+import '@/app/globals.css'
+import { CAM_WIDTH, CAM_HEIGHT } from '@/utils/constants'
+
+
+export default function CameraDisplay({ video, canvas }){
+    const [hideCam, setHideCam] = useState(false)
     return (
         <>
             <FloatButton

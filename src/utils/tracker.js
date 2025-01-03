@@ -1,8 +1,6 @@
 import { FaceLandmarker, PoseLandmarker, HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
-
-const DEVICE = 'GPU'
-const MODE = 'VIDEO'
+import { TRACKER_DEVICE, TRACKER_MODE } from '@/utils/constants'
 
 
 export async function createTrackers() {
@@ -11,9 +9,9 @@ export async function createTrackers() {
     const faceTracker = await FaceLandmarker.createFromOptions(filesetResolver, {
         baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-            delegate: DEVICE
+            delegate: TRACKER_DEVICE
         },
-        runningMode: MODE,
+        runningMode: TRACKER_MODE,
         min_face_detection_confidence: 0.95,
         min_face_presence_confidence: 0.95,
         min_tracking_confidence: 0.95,
@@ -23,10 +21,10 @@ export async function createTrackers() {
 
     const bodyTracker = await PoseLandmarker.createFromOptions(filesetResolver, {
         baseOptions: {
-            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-            delegate: DEVICE
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
+            delegate: TRACKER_DEVICE
         },
-        runningMode: MODE,
+        runningMode: TRACKER_MODE,
         min_pose_detection_confidence: 0.95,
         min_pose_presence_confidence: 0.95,
         min_tracking_confidence: 0.95
@@ -35,9 +33,9 @@ export async function createTrackers() {
     const handTracker = await HandLandmarker.createFromOptions(filesetResolver, {
         baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-            delegate: DEVICE
+            delegate: TRACKER_DEVICE
         },
-        runningMode: MODE,
+        runningMode: TRACKER_MODE,
         numHands: 2,
         min_hand_detection_confidence: 0.95,
         min_hand_presence_confidence: 0.95

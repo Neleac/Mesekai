@@ -12,6 +12,7 @@ import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
 import Avatar from '@/components/avatar'
 import CameraDisplay from '@/components/camera'
+import { CAM_WIDTH, CAM_HEIGHT, SCENES } from '@/utils/constants'
 import {
     createTrackers,
     drawFaceLandmarks,
@@ -19,28 +20,15 @@ import {
     drawHandLandmarks,
 } from '@/utils/tracker'
 
-import {CAM_WIDTH,CAM_HEIGHT } from "../utils/constants"
-
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
 
-const scenes = [
-    { label: 'Apartment', key: 'apartment' },
-    { label: 'City', key: 'city' },
-    { label: 'Dawn', key: 'dawn' },
-    { label: 'Forest', key: 'forest' },
-    { label: 'Lobby', key: 'lobby' },
-    { label: 'Night', key: 'night' },
-    { label: 'Park', key: 'park' },
-    { label: 'Studio', key: 'studio' },
-    { label: 'Sunset', key: 'sunset' },
-    { label: 'Warehouse', key: 'warehouse' },
-]
-
 let trackFace = true
-let trackBody = false
-let trackHands = false
+let trackBody = true
+let trackHands = true
 let trackingResult
+
+
 function processFrame(frame, drawingUtils, setFaceTrackingResult, setBodyTrackingResult, setHandTrackingResult) {
     if (trackFace) {
         trackingResult = faceTracker.detectForVideo(frame, performance.now())
@@ -70,7 +58,7 @@ export default function Home() {
     const [faceTrackingResult, setFaceTrackingResult] = useState(null)
     const [bodyTrackingResult, setBodyTrackingResult] = useState(null)
     const [handTrackingResult, setHandTrackingResult] = useState(null)
-    const [scene, setScene] = useState('sunset')
+    const [scene, setScene] = useState('Sunset')
 
     const video = useRef(null)
     const canvas = useRef(null)
@@ -132,7 +120,7 @@ export default function Home() {
                         userBody={bodyTrackingResult}
                         userHands={handTrackingResult}
                     />
-                    <Environment preset={scene} background={true} />
+                    <Environment preset={scene.toLowerCase()} background={true} />
                     <OrbitControls />
                 </Canvas>
 
@@ -151,13 +139,13 @@ export default function Home() {
                                 setFaceTrackingResult(null)
                             }}
                         />
-                        <Switch checkedChildren="Body" unCheckedChildren="Body" 
+                        <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
                             onChange={(checked) => {
                                 trackBody = checked
                                 setBodyTrackingResult(null)
                             }}
                         />
-                        <Switch checkedChildren="Hands" unCheckedChildren="Hands" 
+                        <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
                             onChange={(checked) => {
                                 trackHands = checked
                                 setHandTrackingResult(null)
@@ -168,7 +156,7 @@ export default function Home() {
                     {/* scene selection */}
                     <Dropdown
                         menu={{
-                            items: scenes,
+                            items: SCENES,
                             onClick: (event) => {
                                 setScene(event.key)
                             },
@@ -176,7 +164,7 @@ export default function Home() {
                     >
                         <Button>
                             <Space>
-                                {scene.charAt(0).toUpperCase() + scene.slice(1).toLowerCase()}
+                                {scene}
                                 <DownOutlined />
                             </Space>
                         </Button>
