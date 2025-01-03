@@ -176,7 +176,7 @@ export default function Home() {
                     >
                         <Button>
                             <Space>
-                                Scene
+                                {scene.charAt(0).toUpperCase() + scene.slice(1).toLowerCase()}
                                 <DownOutlined />
                             </Space>
                         </Button>
