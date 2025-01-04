@@ -26,6 +26,13 @@ body {
   }
 }
 
+.ant-btn,
+.ant-radio-button-wrapper,
+.ant-switch-inner,
+.ant-dropdown-menu-item {
+  font-family: 'Comic Sans MS';
+}
+
 /* camera.js */
 #cam-video {
   transform: scaleX(-1);

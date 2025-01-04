@@ -13,7 +13,7 @@ import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 import Avatar, { resetFace, resetBody, resetHands } from '@/components/avatar'
 import CameraDisplay from '@/components/camera'
 import { 
-    CAM_WIDTH, CAM_HEIGHT, SCENES, 
+    CAM_WIDTH, CAM_HEIGHT, SCENES, DEFAULT_SCENE,
     LM_VIS_THRESH, lHIP, rHIP, 
     BODY_SMOOTHING_FRAMES, HAND_SMOOTHING_FRAMES 
 } from '@/utils/constants'
@@ -24,7 +24,7 @@ import {
     drawHandLandmarks,
     computeAvgLandmarks
 } from '@/utils/tracker'
-
+import './globals.css'
 
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
@@ -106,7 +106,7 @@ export default function Home() {
     const [lHandLandmarks, setlHandLandmarks] = useState(null)
     const [rHandLandmarks, setrHandLandmarks] = useState(null)
     const [trackLegs, setTrackLegs] = useState(true)
-    const [scene, setScene] = useState('Sunset')
+    const [scene, setScene] = useState(DEFAULT_SCENE)
 
     const video = useRef(null)
     const canvas = useRef(null)
@@ -177,11 +177,11 @@ export default function Home() {
                         userRHand={rHandLandmarks}
                         trackLegs={trackLegs}
                     />
-                    <Environment preset={scene.toLowerCase()} background={true} />
+                    <Environment preset={scene} background={true} />
                     <OrbitControls />
                 </Canvas>
-
-                <Space direction='horizontal' align='start'
+                
+                <Space direction='vertical' align='start'
                     style={{
                         position: 'absolute',
                         top: '1%',
@@ -189,43 +189,43 @@ export default function Home() {
                     }}
                 >
                     {/* body part tracking selection */}
-                    <Space direction='vertical'>
-                        <Switch checkedChildren="Face" unCheckedChildren="Face" defaultChecked 
-                            onChange={(checked) => {
-                                trackFace = checked
-                                setFaceLandmarks(null)
-                                resetFace()
-                            }}
-                        />
-                        <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
-                            onChange={(checked) => {
-                                trackBody = checked
-                                setBodyLandmarks(null)
-                                resetBody()
-                            }}
-                        />
-                        <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
-                            onChange={(checked) => {
-                                trackHands = checked
-                                setlHandLandmarks(null)
-                                setrHandLandmarks(null)
-                                resetHands()
-                            }}
-                        />
-                    </Space>
+                    <Switch checkedChildren="Face" unCheckedChildren="Face" defaultChecked 
+                        onChange={(checked) => {
+                            trackFace = checked
+                            setFaceLandmarks(null)
+                            resetFace()
+                        }}
+                    />
+                    <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
+                        onChange={(checked) => {
+                            trackBody = checked
+                            setBodyLandmarks(null)
+                            resetBody()
+                        }}
+                    />
+                    <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
+                        onChange={(checked) => {
+                            trackHands = checked
+                            setlHandLandmarks(null)
+                            setrHandLandmarks(null)
+                            resetHands()
+                        }}
+                    />
 
                     {/* scene selection */}
                     <Dropdown
                         menu={{
                             items: SCENES,
+                            selectable: true,
+                            defaultSelectedKeys: [DEFAULT_SCENE],
                             onClick: (event) => {
                                 setScene(event.key)
                             },
                         }}
                     >
-                        <Button>
+                        <Button size='small' style={{ fontSize: '0.75em' }}>
                             <Space>
-                                {scene}
+                                Scene
                                 <DownOutlined />
                             </Space>
                         </Button>
@@ -256,11 +256,12 @@ export default function Home() {
 
             {/* avatar creator toggle */}
             <Radio.Group
-                style={{ position: 'absolute', bottom: '1%', left: '1%' }}
                 value={inMesekai}
                 onChange={(event) => {
                     setInMesekai(event.target.value)
                 }}
+                size='large'
+                style={{ position: 'absolute', bottom: '1%', left: '1%' }}
             >
                 <Radio.Button value={true} style={{ width: '50%' }}>
                     Mesekai

@@ -5,17 +5,18 @@ export const TRACKER_DEVICE = 'GPU'
 export const TRACKER_MODE = 'VIDEO'
 
 export const SCENES = [
-    { label: 'Apartment', key: 'Apartment' },
-    { label: 'City', key: 'City' },
-    { label: 'Dawn', key: 'Dawn' },
-    { label: 'Forest', key: 'Forest' },
-    { label: 'Lobby', key: 'Lobby' },
-    { label: 'Night', key: 'Night' },
-    { label: 'Park', key: 'Park' },
-    { label: 'Studio', key: 'Studio' },
-    { label: 'Sunset', key: 'Sunset' },
-    { label: 'Warehouse', key: 'Warehouse' },
+    { label: 'Apartment', key: 'apartment' },
+    { label: 'City', key: 'city' },
+    { label: 'Desert', key: 'dawn' },
+    { label: 'Forest', key: 'forest' },
+    { label: 'Lobby', key: 'lobby' },
+    { label: 'Night', key: 'night' },
+    { label: 'Park', key: 'park' },
+    { label: 'Studio', key: 'studio' },
+    { label: 'Pier', key: 'sunset' },
+    { label: 'Warehouse', key: 'warehouse' },
 ]
+export const DEFAULT_SCENE = 'sunset'
 
 // min landmark visibility to be used for tracking
 export const LM_VIS_THRESH = 0.5
