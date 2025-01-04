@@ -9,7 +9,12 @@ import {
     resetRotations 
 } from '@/utils/solver'
 
-let headBones, bodyBones, lHandBones, rHandBones, legBones, meshes
+let headBones = [] 
+let bodyBones = []  
+let lHandBones = []  
+let rHandBones = []  
+let legBones = []  
+let meshes = [] 
 const defaultHeadQuats = []
 const defaultBodyQuats = []
 const defaultLHandQuats = []
@@ -33,22 +38,58 @@ function getDefaultHandQuats(bone, defaultHandQuats) {
 }
 
 
+export function resetFace() {
+    resetBlendshapes(meshes)
+    resetRotations(headBones, defaultHeadQuats)
+}
+
+
+export function resetBody() {
+    resetRotations(bodyBones, defaultBodyQuats)
+    resetRotations(legBones, defaultLegQuats)
+}
+
+
+export function resetHands() {
+    resetRotations(lHandBones, defaultLHandQuats)
+    resetRotations(rHandBones, defaultRHandQuats)
+}
+
+
 export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userRHand, trackLegs }) {
     const { nodes, _ } = useGLTF(avatarUrl)
-    meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
-    headBones = [nodes.Head, nodes.Neck, nodes.Spine2]
-    bodyBones = [
-        nodes.Spine, nodes.Spine1, 
-        nodes.RightArm, nodes.RightForeArm, nodes.RightHand, 
-        nodes.LeftArm, nodes.LeftForeArm, nodes.LeftHand
-    ]
-    legBones = [
-        nodes.RightUpLeg, nodes.RightLeg, nodes.RightFoot,
-        nodes.LeftUpLeg, nodes.LeftLeg, nodes.LeftFoot
-    ]
-    lHandBones = [], rHandBones = []
-    getHandBones(nodes.LeftHand, lHandBones)
-    getHandBones(nodes.RightHand, rHandBones)
+
+    // store bones and meshes
+    if (headBones.length == 0) {
+        headBones = [nodes.Head, nodes.Neck, nodes.Spine2]
+    }
+
+    if (bodyBones.length == 0) {
+        bodyBones = [
+            nodes.Spine, nodes.Spine1, 
+            nodes.RightArm, nodes.RightForeArm, nodes.RightHand, 
+            nodes.LeftArm, nodes.LeftForeArm, nodes.LeftHand
+        ]
+    }
+
+    if (legBones.length == 0) {
+        legBones = [
+            nodes.RightUpLeg, nodes.RightLeg, nodes.RightFoot,
+            nodes.LeftUpLeg, nodes.LeftLeg, nodes.LeftFoot
+        ]
+    }
+
+    if (lHandBones.length == 0) {
+        getHandBones(nodes.LeftHand, lHandBones)
+    }
+
+    if (rHandBones.length == 0) {
+        getHandBones(nodes.RightHand, rHandBones)
+    }
+
+    if (meshes.length == 0) {
+        meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
+    }
 
     // store default rotations
     if (defaultHeadQuats.length == 0) {
@@ -70,7 +111,7 @@ export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userR
     if (defaultRHandQuats.length == 0) {
         getDefaultHandQuats(nodes.RightHand, defaultRHandQuats)
     }
-    
+
     if (defaultLegQuats.length == 0) {
         for (const bone of legBones) {
             defaultLegQuats.push(bone.quaternion.clone())
@@ -87,34 +128,20 @@ export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userR
         if (userFace.facialTransformationMatrixes && userFace.facialTransformationMatrixes.length > 0) {
             rotateHead(headBones, userFace.facialTransformationMatrixes[0].data)
         }
-    } else {
-        console.log('resetting face')
-        resetBlendshapes(meshes)
-        resetRotations(headBones, defaultHeadQuats)
     }
 
     if (userBody) {
         animateBody(bodyBones, legBones, userBody, trackLegs, defaultLegQuats)
-    } else {
-        console.log('resetting body')
-        resetRotations(bodyBones, defaultBodyQuats)
-        resetRotations(legBones, defaultLegQuats)
     }
 
     if (userLHand) {
         animateHand(nodes.RightHand, userLHand, 'Left')
-    } else {
-        console.log('resetting lhand')
-        resetRotations(lHandBones, defaultLHandQuats)
     }
 
     if (userRHand) {
         animateHand(nodes.LeftHand, userRHand, 'Right')
-    } else {
-        console.log('resetting rhand')
-        resetRotations(rHandBones, defaultRHandQuats)
     }
-    
+
     return (
         <primitive object={nodes.Scene} position={[0, -1, 3.5]} />
     )

@@ -10,7 +10,7 @@ import { Environment, OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
-import Avatar from '@/components/avatar'
+import Avatar, { resetFace, resetBody, resetHands } from '@/components/avatar'
 import CameraDisplay from '@/components/camera'
 import { 
     CAM_WIDTH, CAM_HEIGHT, SCENES, 
@@ -194,18 +194,22 @@ export default function Home() {
                             onChange={(checked) => {
                                 trackFace = checked
                                 setFaceLandmarks(null)
+                                resetFace()
                             }}
                         />
                         <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
                             onChange={(checked) => {
                                 trackBody = checked
                                 setBodyLandmarks(null)
+                                resetBody()
                             }}
                         />
                         <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
                             onChange={(checked) => {
                                 trackHands = checked
-                                setHandLandmarks(null)
+                                setlHandLandmarks(null)
+                                setrHandLandmarks(null)
+                                resetHands()
                             }}
                         />
                     </Space>
