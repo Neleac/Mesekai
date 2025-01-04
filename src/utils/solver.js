@@ -75,7 +75,7 @@ export function rotateHead(bones, faceMatrix) {
 }
 
 
-export function animateBody(bodyBones, legBones, landmarks, trackLegs, defaultLegQuats) {
+export function animateBody(bodyBones, legBones, landmarks, legsVisible, trackLegs, defaultLegQuats) {
     // cache landmark vectors
     landmarks.forEach((landmark, lmIdx) => {
         poseLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
@@ -118,7 +118,7 @@ export function animateBody(bodyBones, legBones, landmarks, trackLegs, defaultLe
 
     // TODO: wrist rotation (forearm twist)
 
-    if (trackLegs) {
+    if (legsVisible && trackLegs) {
         // user left leg, avatar right leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
         solveRotation(legBones[0], poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true)

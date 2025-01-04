@@ -47,6 +47,10 @@ export function resetFace() {
 
 export function resetBody() {
     resetRotations(bodyBones, defaultBodyQuats)
+}
+
+
+export function resetLegs() {
     resetRotations(legBones, defaultLegQuats)
 }
 
@@ -57,11 +61,10 @@ export function resetHands() {
 }
 
 
-export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userRHand, trackLegs }) {
+export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userRHand, legsVisible, trackLegs }) {
     const { nodes, _ } = useGLTF(avatarUrl)
 
     useEffect(() => {
-        console.log('HERE')
         // store bones and meshes
         meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
         headBones = [nodes.Head, nodes.Neck, nodes.Spine2]
@@ -119,7 +122,7 @@ export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userR
     }
 
     if (userBody) {
-        animateBody(bodyBones, legBones, userBody, trackLegs, defaultLegQuats)
+        animateBody(bodyBones, legBones, userBody, legsVisible, trackLegs, defaultLegQuats)
     }
 
     if (userLHand) {

@@ -10,7 +10,7 @@ import { Environment, OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
-import Avatar, { resetFace, resetBody, resetHands } from '@/components/avatar'
+import Avatar, { resetFace, resetBody, resetLegs, resetHands } from '@/components/avatar'
 import CameraDisplay from '@/components/camera'
 import { 
     CAM_WIDTH, CAM_HEIGHT, SCENES, DEFAULT_SCENE,
@@ -38,7 +38,7 @@ const lHandFrames = []
 const rHandFrames = []
 
 
-function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, setlHandLandmarks, setrHandLandmarks, setTrackLegs) {    
+function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, setlHandLandmarks, setrHandLandmarks, setLegsVisible) {    
     if (trackFace) {
         const trackingResult = faceTracker.detectForVideo(frame, performance.now())
         
@@ -61,7 +61,7 @@ function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, s
                 computeAvgLandmarks(bodyFrames)
                 setBodyLandmarks(bodyFrames[0])
                 bodyFrames.shift()
-                setTrackLegs(landmarks[lHIP].visibility > LM_VIS_THRESH && landmarks[rHIP].visibility > LM_VIS_THRESH)
+                setLegsVisible(landmarks[lHIP].visibility > LM_VIS_THRESH && landmarks[rHIP].visibility > LM_VIS_THRESH)
             }
         }
 
@@ -105,6 +105,7 @@ export default function Home() {
     const [bodyLandmarks, setBodyLandmarks] = useState(null)
     const [lHandLandmarks, setlHandLandmarks] = useState(null)
     const [rHandLandmarks, setrHandLandmarks] = useState(null)
+    const [legsVisible, setLegsVisible] = useState(false)
     const [trackLegs, setTrackLegs] = useState(true)
     const [scene, setScene] = useState(DEFAULT_SCENE)
 
@@ -132,7 +133,7 @@ export default function Home() {
                         setBodyLandmarks, 
                         setlHandLandmarks, 
                         setrHandLandmarks, 
-                        setTrackLegs
+                        setLegsVisible
                     )
                     canvasCtx.restore()
                 }
@@ -175,6 +176,7 @@ export default function Home() {
                         userBody={bodyLandmarks}
                         userLHand={lHandLandmarks}
                         userRHand={rHandLandmarks}
+                        legsVisible={legsVisible}
                         trackLegs={trackLegs}
                     />
                     <Environment preset={scene} background={true} />
@@ -192,23 +194,40 @@ export default function Home() {
                     <Switch checkedChildren="Face" unCheckedChildren="Face" defaultChecked 
                         onChange={(checked) => {
                             trackFace = checked
-                            setFaceLandmarks(null)
-                            resetFace()
+                            if (!checked) {
+                                setFaceLandmarks(null)
+                                resetFace()
+                            }
                         }}
                     />
                     <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
                         onChange={(checked) => {
                             trackBody = checked
-                            setBodyLandmarks(null)
-                            resetBody()
+                            if (!checked) {
+                                setBodyLandmarks(null)
+                                resetBody()
+                                resetLegs()
+                            }
+                        }}
+                    />
+                    <Switch checkedChildren="Legs" unCheckedChildren="Legs" defaultChecked
+                        checked={trackLegs && bodyLandmarks}
+                        disabled={!bodyLandmarks}
+                        onChange={(checked) => {
+                            setTrackLegs(checked)
+                            if (!checked) {
+                                resetLegs()
+                            }
                         }}
                     />
                     <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
                         onChange={(checked) => {
                             trackHands = checked
-                            setlHandLandmarks(null)
-                            setrHandLandmarks(null)
-                            resetHands()
+                            if (!checked) {
+                                setlHandLandmarks(null)
+                                setrHandLandmarks(null)
+                                resetHands()
+                            }
                         }}
                     />
 
