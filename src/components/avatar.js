@@ -1,31 +1,39 @@
 import { useGLTF } from '@react-three/drei'
 
-import { animateBody, animateFace, animateHands, rotateHead, resetBlendshapes, resetRotations } from '@/utils/solver'
+import { 
+    animateBody, 
+    animateFace, 
+    animateHand, 
+    rotateHead, 
+    resetBlendshapes, 
+    resetRotations 
+} from '@/utils/solver'
 
-let headBones, bodyBones, handBones, legBones, meshes
+let headBones, bodyBones, lHandBones, rHandBones, legBones, meshes
 const defaultHeadQuats = []
 const defaultBodyQuats = []
-const defaultHandQuats = []
+const defaultLHandQuats = []
+const defaultRHandQuats = []
 const defaultLegQuats = []
 
 
-function getHandBones(bone) {
+function getHandBones(bone, handBones) {
     for (const child of bone.children) {
         handBones.push(child)
-        getHandBones(child)
+        getHandBones(child, handBones)
     }
 }
 
 
-function getDefaultHandQuats(bone) {
+function getDefaultHandQuats(bone, defaultHandQuats) {
     for (const child of bone.children) {
         defaultHandQuats.push(child.quaternion.clone())
-        getDefaultHandQuats(child)
+        getDefaultHandQuats(child, defaultHandQuats)
     }
 }
 
 
-export default function Avatar({ avatarUrl, userFace, userBody, userHands }) {
+export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userRHand, trackLegs }) {
     const { nodes, _ } = useGLTF(avatarUrl)
     meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
     headBones = [nodes.Head, nodes.Neck, nodes.Spine2]
@@ -38,10 +46,9 @@ export default function Avatar({ avatarUrl, userFace, userBody, userHands }) {
         nodes.RightUpLeg, nodes.RightLeg, nodes.RightFoot,
         nodes.LeftUpLeg, nodes.LeftLeg, nodes.LeftFoot
     ]
-    handBones = []
-    for (const bone of [nodes.LeftHand, nodes.RightHand]) {
-        getHandBones(bone)
-    }
+    lHandBones = [], rHandBones = []
+    getHandBones(nodes.LeftHand, lHandBones)
+    getHandBones(nodes.RightHand, rHandBones)
 
     // store default rotations
     if (defaultHeadQuats.length == 0) {
@@ -56,12 +63,14 @@ export default function Avatar({ avatarUrl, userFace, userBody, userHands }) {
         }
     }
 
-    if (defaultHandQuats.length == 0) {
-        for (const bone of [nodes.LeftHand, nodes.RightHand]) {
-            getDefaultHandQuats(bone)
-        }
+    if (defaultLHandQuats.length == 0) {
+        getDefaultHandQuats(nodes.LeftHand, defaultLHandQuats)
     }
 
+    if (defaultRHandQuats.length == 0) {
+        getDefaultHandQuats(nodes.RightHand, defaultRHandQuats)
+    }
+    
     if (defaultLegQuats.length == 0) {
         for (const bone of legBones) {
             defaultLegQuats.push(bone.quaternion.clone())
@@ -79,23 +88,31 @@ export default function Avatar({ avatarUrl, userFace, userBody, userHands }) {
             rotateHead(headBones, userFace.facialTransformationMatrixes[0].data)
         }
     } else {
+        console.log('resetting face')
         resetBlendshapes(meshes)
         resetRotations(headBones, defaultHeadQuats)
     }
 
     if (userBody) {
-        if (userBody.worldLandmarks && userBody.worldLandmarks.length > 0) {
-            animateBody(bodyBones, legBones, userBody.worldLandmarks[0], defaultLegQuats)
-        }
+        animateBody(bodyBones, legBones, userBody, trackLegs, defaultLegQuats)
     } else {
+        console.log('resetting body')
         resetRotations(bodyBones, defaultBodyQuats)
         resetRotations(legBones, defaultLegQuats)
     }
 
-    if (userHands) {
-        animateHands(nodes, userHands)
+    if (userLHand) {
+        animateHand(nodes.RightHand, userLHand, 'Left')
     } else {
-        resetRotations(handBones, defaultHandQuats)
+        console.log('resetting lhand')
+        resetRotations(lHandBones, defaultLHandQuats)
+    }
+
+    if (userRHand) {
+        animateHand(nodes.LeftHand, userRHand, 'Right')
+    } else {
+        console.log('resetting rhand')
+        resetRotations(rHandBones, defaultRHandQuats)
     }
     
     return (

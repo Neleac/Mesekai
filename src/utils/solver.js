@@ -1,35 +1,12 @@
 import { Euler, Matrix4, Quaternion, Vector3, Matrix3, MathUtils } from 'three'
 
-import { LM_VIS_THRESH, HEAD_SMOOTHING, BODY_SMOOTHING, HAND_SMOOTHING } from '@/utils/constants'
+import { 
+    HEAD_SMOOTHING, BODY_SMOOTHING, HAND_SMOOTHING,
+    lSHOULDER, rSHOULDER, lELBOW, rELBOW, lWRIST, rWRIST, lPINKY, rPINKY, lINDEX, rINDEX,
+    lHIP, rHIP, lKNEE, rKNEE, lANKLE, rANKLE, lHEEL, rHEEL,
+    WRIST, INDEX, MIDDLE, PINKY, FINGERS
+} from '@/utils/constants'
 
-
-// landmark indices
-const lSHOULDER = 11
-const rSHOULDER = 12
-const lELBOW = 13
-const rELBOW = 14
-const lWRIST = 15
-const rWRIST = 16
-const lPINKY = 17
-const rPINKY = 18
-const lINDEX = 19
-const rINDEX = 20
-const lHIP = 23
-const rHIP = 24
-const lKNEE = 25
-const rKNEE = 26
-const lANKLE = 27
-const rANKLE = 28
-const lHEEL = 29
-const rHEEL = 30
-
-const WRIST = 0
-const THUMB = 1
-const INDEX = 5
-const MIDDLE = 9
-const RING = 13
-const PINKY = 17
-const FINGERS = [THUMB, INDEX, MIDDLE, RING, PINKY]
 
 // cache landmarks and transforms to avoid reallocation
 const poseLms = new Array(33)
@@ -98,115 +75,79 @@ export function rotateHead(bones, faceMatrix) {
 }
 
 
-export function animateBody(bodyBones, legBones, landmarks, defaultLegQuats) {
-    // cache visible landmarks, else set to zero vector
+export function animateBody(bodyBones, legBones, landmarks, trackLegs, defaultLegQuats) {
+    // cache landmark vectors
     landmarks.forEach((landmark, lmIdx) => {
-        if (landmark.visibility > LM_VIS_THRESH) {
-            poseLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
-        } else {
-            poseLms[lmIdx].set(0, 0, 0)
-        }
+        poseLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
     })
 
-    if (poseLms[lSHOULDER].length() > 0 && poseLms[rSHOULDER].length() > 0) {
-        // torso direction
-        const shoulderX = poseLms[rSHOULDER].clone().sub(poseLms[lSHOULDER]).normalize()
-        const shoulderY = poseLms[lSHOULDER].clone().lerp(poseLms[rSHOULDER], 0.5).normalize()
-        const shoulderZ = shoulderX.clone().cross(shoulderY).normalize()
-        shoulderRotMat.set(
-            shoulderX.x, shoulderY.x, shoulderZ.x, 0,
-            shoulderX.y, shoulderY.y, shoulderZ.y, 0,
-            shoulderX.z, shoulderY.z, shoulderZ.z, 0,
-            0, 0, 0, 1
-        ).multiply(invIdentityMat)
+    // torso direction
+    const shoulderX = poseLms[rSHOULDER].clone().sub(poseLms[lSHOULDER]).normalize()
+    const shoulderY = poseLms[lSHOULDER].clone().lerp(poseLms[rSHOULDER], 0.5).normalize()
+    const shoulderZ = shoulderX.clone().cross(shoulderY).normalize()
+    shoulderRotMat.set(
+        shoulderX.x, shoulderY.x, shoulderZ.x, 0,
+        shoulderX.y, shoulderY.y, shoulderZ.y, 0,
+        shoulderX.z, shoulderY.z, shoulderZ.z, 0,
+        0, 0, 0, 1
+    ).multiply(invIdentityMat)
 
-        spineEuler.setFromRotationMatrix(shoulderRotMat)
-        spineEuler.set(spineEuler.x / 4, spineEuler.y / 2, spineEuler.z / 2)
-        spineQuat.setFromEuler(spineEuler)
-        bodyBones[0].quaternion.slerp(spineQuat, BODY_SMOOTHING)
-        bodyBones[1].quaternion.slerp(spineQuat, BODY_SMOOTHING)
+    spineEuler.setFromRotationMatrix(shoulderRotMat)
+    spineEuler.set(spineEuler.x / 4, spineEuler.y / 2, spineEuler.z / 2)
+    spineQuat.setFromEuler(spineEuler)
+    bodyBones[0].quaternion.slerp(spineQuat, BODY_SMOOTHING)
+    bodyBones[1].quaternion.slerp(spineQuat, BODY_SMOOTHING)
 
-        // user left arm, avatar right arm
-        createShoulderAxes(poseLms[rSHOULDER], poseLms[lSHOULDER])
-        if (poseLms[lELBOW].length() > 0) {
-            solveRotation(bodyBones[2], poseLms[lSHOULDER], poseLms[lELBOW], BODY_SMOOTHING)
-            if (poseLms[lWRIST].length() > 0) {
-                updateAxes()
-                solveRotation(bodyBones[3], poseLms[lELBOW], poseLms[lWRIST], BODY_SMOOTHING)
-                if (poseLms[lINDEX].length() > 0 && poseLms[lPINKY].length() > 0) {
-                    poseLms[lINDEX].lerp(poseLms[lPINKY], 0.5)
-                    updateAxes()
-                    solveRotation(bodyBones[4], poseLms[lWRIST], poseLms[lINDEX], BODY_SMOOTHING)
-                }
-            }
-        }
+    // user left arm, avatar right arm
+    createShoulderAxes(poseLms[rSHOULDER], poseLms[lSHOULDER])
+    solveRotation(bodyBones[2], poseLms[lSHOULDER], poseLms[lELBOW], BODY_SMOOTHING)
+    updateAxes()
+    solveRotation(bodyBones[3], poseLms[lELBOW], poseLms[lWRIST], BODY_SMOOTHING)
+    poseLms[lINDEX].lerp(poseLms[lPINKY], 0.5)
+    updateAxes()
+    solveRotation(bodyBones[4], poseLms[lWRIST], poseLms[lINDEX], BODY_SMOOTHING)
 
-        // user right arm, avatar left arm
-        createShoulderAxes(poseLms[lSHOULDER], poseLms[rSHOULDER])
-        if (poseLms[rELBOW].length() > 0) {
-            solveRotation(bodyBones[5], poseLms[rSHOULDER], poseLms[rELBOW], BODY_SMOOTHING)
-            if (poseLms[rWRIST].length() > 0) {
-                updateAxes()
-                solveRotation(bodyBones[6], poseLms[rELBOW], poseLms[rWRIST], BODY_SMOOTHING)
-                if (poseLms[rINDEX].length() > 0 && poseLms[rPINKY].length() > 0) {
-                    poseLms[rINDEX].lerp(poseLms[rPINKY], 0.5)
-                    updateAxes()
-                    solveRotation(bodyBones[7], poseLms[rWRIST], poseLms[rINDEX], BODY_SMOOTHING)
-                }
-            }
-        }
+    // user right arm, avatar left arm
+    createShoulderAxes(poseLms[lSHOULDER], poseLms[rSHOULDER])
+    solveRotation(bodyBones[5], poseLms[rSHOULDER], poseLms[rELBOW], BODY_SMOOTHING)
+    updateAxes()
+    solveRotation(bodyBones[6], poseLms[rELBOW], poseLms[rWRIST], BODY_SMOOTHING)
+    poseLms[rINDEX].lerp(poseLms[rPINKY], 0.5)
+    updateAxes()
+    solveRotation(bodyBones[7], poseLms[rWRIST], poseLms[rINDEX], BODY_SMOOTHING)
 
-        // TODO: wrist rotation (forearm twist)
-    }
+    // TODO: wrist rotation (forearm twist)
 
-    if (poseLms[lHIP].length() > 0 && poseLms[rHIP].length() > 0) {
+    if (trackLegs) {
         // user left leg, avatar right leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
-        if (poseLms[lKNEE].length() > 0) {
-            solveRotation(legBones[0], poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true)
-            if (poseLms[lANKLE].length() > 0) {
-                updateAxes()
-                solveRotation(legBones[1], poseLms[lKNEE], poseLms[lANKLE], BODY_SMOOTHING)
-                if (poseLms[lHEEL].length() > 0) {
-                    updateAxes()
-                    solveRotation(legBones[2], poseLms[lANKLE], poseLms[lHEEL], BODY_SMOOTHING)
-                }
-            }
-        }
+        solveRotation(legBones[0], poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true)
+        updateAxes()
+        solveRotation(legBones[1], poseLms[lKNEE], poseLms[lANKLE], BODY_SMOOTHING)
+        updateAxes()
+        solveRotation(legBones[2], poseLms[lANKLE], poseLms[lHEEL], BODY_SMOOTHING)
 
         // user right leg, avatar left leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
-        if (poseLms[rKNEE].length() > 0) {
-            solveRotation(legBones[3], poseLms[rHIP], poseLms[rKNEE], BODY_SMOOTHING, true)
-            if (poseLms[rANKLE].length() > 0) {
-                updateAxes()
-                solveRotation(legBones[4], poseLms[rKNEE], poseLms[rANKLE], BODY_SMOOTHING)
-                if (poseLms[rHEEL].length() > 0) {
-                    updateAxes()
-                    solveRotation(legBones[5], poseLms[rANKLE], poseLms[rHEEL], BODY_SMOOTHING)
-                }
-            }
-        }
+        solveRotation(legBones[3], poseLms[rHIP], poseLms[rKNEE], BODY_SMOOTHING, true)
+        updateAxes()
+        solveRotation(legBones[4], poseLms[rKNEE], poseLms[rANKLE], BODY_SMOOTHING)
+        updateAxes()
+        solveRotation(legBones[5], poseLms[rANKLE], poseLms[rHEEL], BODY_SMOOTHING)
     } else {
         // reset legs if not detected
         resetRotations(legBones, defaultLegQuats)
-    }        
+    }
 }
 
 
-export function animateHands(bones, trackingResult) {
-    for (let handIdx = 0; handIdx < trackingResult.handedness.length; handIdx++) {
-        // cache landmarks
-        trackingResult.worldLandmarks[handIdx].forEach((landmark, lmIdx) => {
-            handLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
-        })
+export function animateHand(bone, landmarks, handedness) {
+    // cache landmarks
+    landmarks.forEach((landmark, lmIdx) => {
+        handLms[lmIdx].set(-landmark.x, -landmark.y, -landmark.z)
+    })
 
-        if (trackingResult.handedness[handIdx][0]['categoryName'] == 'Left') {
-            solveHand(bones.RightHand, 'Left')
-        } else {
-            solveHand(bones.LeftHand, 'Right')
-        }
-    }
+    solveHand(bone, handedness)
 }
 
 

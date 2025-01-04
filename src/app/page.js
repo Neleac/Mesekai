@@ -12,13 +12,19 @@ import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
 import Avatar from '@/components/avatar'
 import CameraDisplay from '@/components/camera'
-import { CAM_WIDTH, CAM_HEIGHT, SCENES } from '@/utils/constants'
+import { 
+    CAM_WIDTH, CAM_HEIGHT, SCENES, 
+    LM_VIS_THRESH, lHIP, rHIP, 
+    BODY_SMOOTHING_FRAMES, HAND_SMOOTHING_FRAMES 
+} from '@/utils/constants'
 import {
     createTrackers,
     drawFaceLandmarks,
     drawBodyLandmarks,
     drawHandLandmarks,
+    computeAvgLandmarks
 } from '@/utils/tracker'
+
 
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
@@ -26,25 +32,65 @@ let faceTracker, bodyTracker, handTracker
 let trackFace = true
 let trackBody = true
 let trackHands = true
-let trackingResult
+
+const bodyFrames = []
+const lHandFrames = []
+const rHandFrames = []
 
 
-function processFrame(frame, drawingUtils, setFaceTrackingResult, setBodyTrackingResult, setHandTrackingResult) {
+function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, setlHandLandmarks, setrHandLandmarks, setTrackLegs) {    
     if (trackFace) {
-        trackingResult = faceTracker.detectForVideo(frame, performance.now())
-        setFaceTrackingResult(trackingResult)
+        const trackingResult = faceTracker.detectForVideo(frame, performance.now())
+        
+        // animate avatar
+        setFaceLandmarks(trackingResult)
+
+        // draw video overlay
         drawFaceLandmarks(trackingResult.faceLandmarks, drawingUtils, CAM_HEIGHT / 1000)
     }
 
     if (trackBody) {
-        trackingResult = bodyTracker.detectForVideo(frame, performance.now())
-        setBodyTrackingResult(trackingResult)
+        const trackingResult = bodyTracker.detectForVideo(frame, performance.now())
+
+        // animate avatar
+        if (trackingResult.worldLandmarks && trackingResult.worldLandmarks.length > 0) {
+            const landmarks = trackingResult.worldLandmarks[0]
+            bodyFrames.push(landmarks)
+
+            if (bodyFrames.length == BODY_SMOOTHING_FRAMES) {
+                computeAvgLandmarks(bodyFrames)
+                setBodyLandmarks(bodyFrames[0])
+                bodyFrames.shift()
+                setTrackLegs(landmarks[lHIP].visibility > LM_VIS_THRESH && landmarks[rHIP].visibility > LM_VIS_THRESH)
+            }
+        }
+
+        // draw video overlay
         drawBodyLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 500)
     }
 
     if (trackHands) {
-        trackingResult = handTracker.detectForVideo(frame, performance.now())
-        setHandTrackingResult(trackingResult)
+        const trackingResult = handTracker.detectForVideo(frame, performance.now())
+        
+        // animate avatar
+        for (let handIdx = 0; handIdx < trackingResult.handedness.length; handIdx++) {
+            const handedness = trackingResult.handedness[handIdx][0]['categoryName']
+            const handFrames = (handedness == 'Left') ? lHandFrames : rHandFrames
+            const landmarks = trackingResult.worldLandmarks[handIdx]
+            handFrames.push(landmarks)
+
+            if (handFrames.length == HAND_SMOOTHING_FRAMES) {
+                computeAvgLandmarks(handFrames)
+                if (handedness == 'Left') {
+                    setlHandLandmarks(handFrames[0])
+                } else {
+                    setrHandLandmarks(handFrames[0])
+                }
+                handFrames.shift()
+            }
+        }
+
+        // draw video overlay
         drawHandLandmarks(trackingResult.landmarks, drawingUtils, CAM_HEIGHT / 1000, CAM_HEIGHT / 1000)
     }
 }
@@ -55,9 +101,11 @@ export default function Home() {
     const [avatarUrl, setAvatarUrl] = useState(
         'https://models.readyplayer.me/622952275de1ae64c9ebe969.glb?morphTargets=ARKit'
     )
-    const [faceTrackingResult, setFaceTrackingResult] = useState(null)
-    const [bodyTrackingResult, setBodyTrackingResult] = useState(null)
-    const [handTrackingResult, setHandTrackingResult] = useState(null)
+    const [faceLandmarks, setFaceLandmarks] = useState(null)
+    const [bodyLandmarks, setBodyLandmarks] = useState(null)
+    const [lHandLandmarks, setlHandLandmarks] = useState(null)
+    const [rHandLandmarks, setrHandLandmarks] = useState(null)
+    const [trackLegs, setTrackLegs] = useState(true)
     const [scene, setScene] = useState('Sunset')
 
     const video = useRef(null)
@@ -78,7 +126,14 @@ export default function Home() {
                     lastVideoTime = video.current.currentTime
                     canvasCtx.save()
                     canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height)
-                    processFrame(video.current, drawingUtils, setFaceTrackingResult, setBodyTrackingResult, setHandTrackingResult)
+                    processFrame(
+                        video.current, drawingUtils, 
+                        setFaceLandmarks, 
+                        setBodyLandmarks, 
+                        setlHandLandmarks, 
+                        setrHandLandmarks, 
+                        setTrackLegs
+                    )
                     canvasCtx.restore()
                 }
             },
@@ -116,9 +171,11 @@ export default function Home() {
                 >
                     <Avatar
                         avatarUrl={avatarUrl}
-                        userFace={faceTrackingResult}
-                        userBody={bodyTrackingResult}
-                        userHands={handTrackingResult}
+                        userFace={faceLandmarks}
+                        userBody={bodyLandmarks}
+                        userLHand={lHandLandmarks}
+                        userRHand={rHandLandmarks}
+                        trackLegs={trackLegs}
                     />
                     <Environment preset={scene.toLowerCase()} background={true} />
                     <OrbitControls />
@@ -136,19 +193,19 @@ export default function Home() {
                         <Switch checkedChildren="Face" unCheckedChildren="Face" defaultChecked 
                             onChange={(checked) => {
                                 trackFace = checked
-                                setFaceTrackingResult(null)
+                                setFaceLandmarks(null)
                             }}
                         />
                         <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
                             onChange={(checked) => {
                                 trackBody = checked
-                                setBodyTrackingResult(null)
+                                setBodyLandmarks(null)
                             }}
                         />
                         <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
                             onChange={(checked) => {
                                 trackHands = checked
-                                setHandTrackingResult(null)
+                                setHandLandmarks(null)
                             }}
                         />
                     </Space>
