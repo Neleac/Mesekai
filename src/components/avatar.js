@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useGLTF } from '@react-three/drei'
 
 import { 
@@ -59,38 +60,25 @@ export function resetHands() {
 export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userRHand, trackLegs }) {
     const { nodes, _ } = useGLTF(avatarUrl)
 
-    // store bones and meshes
-    if (headBones.length == 0) {
+    useEffect(() => {
+        console.log('HERE')
+        // store bones and meshes
+        meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
         headBones = [nodes.Head, nodes.Neck, nodes.Spine2]
-    }
-
-    if (bodyBones.length == 0) {
         bodyBones = [
             nodes.Spine, nodes.Spine1, 
             nodes.RightArm, nodes.RightForeArm, nodes.RightHand, 
             nodes.LeftArm, nodes.LeftForeArm, nodes.LeftHand
         ]
-    }
-
-    if (legBones.length == 0) {
         legBones = [
             nodes.RightUpLeg, nodes.RightLeg, nodes.RightFoot,
             nodes.LeftUpLeg, nodes.LeftLeg, nodes.LeftFoot
         ]
-    }
-
-    if (lHandBones.length == 0) {
+        lHandBones = [], rHandBones = []
         getHandBones(nodes.LeftHand, lHandBones)
-    }
-
-    if (rHandBones.length == 0) {
         getHandBones(nodes.RightHand, rHandBones)
-    }
-
-    if (meshes.length == 0) {
-        meshes = [nodes.EyeLeft, nodes.EyeRight, nodes.Wolf3D_Head, nodes.Wolf3D_Teeth]
-    }
-
+    }, [nodes])
+    
     // store default rotations
     if (defaultHeadQuats.length == 0) {
         for (const bone of headBones) {
