@@ -6,16 +6,18 @@ import { DownOutlined } from '@ant-design/icons'
 import { Camera } from '@mediapipe/camera_utils'
 import { DrawingUtils } from '@mediapipe/tasks-vision'
 import { useEffect, useRef, useState } from 'react'
-import { Environment, OrbitControls } from '@react-three/drei'
+import { Environment } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { AvatarCreator } from '@readyplayerme/react-avatar-creator'
 
 import Avatar, { resetFace, resetBody, resetLegs, resetHands } from '@/components/avatar'
 import CameraDisplay from '@/components/camera'
+import Controls from '@/components/controls'
 import { 
-    CAM_WIDTH, CAM_HEIGHT, SCENES, DEFAULT_SCENE,
+    CAM_WIDTH, CAM_HEIGHT, SCENES, DEFAULT_SCENE, 
+    FULLBODY_LOOKAT, HALFBODY_LOOKAT, HEADONLY_LOOKAT, 
     LM_VIS_THRESH, lHIP, rHIP, 
-    BODY_SMOOTHING_FRAMES, HAND_SMOOTHING_FRAMES 
+    BODY_SMOOTHING_FRAMES, HAND_SMOOTHING_FRAMES
 } from '@/utils/constants'
 import {
     createTrackers,
@@ -108,6 +110,7 @@ export default function Home() {
     const [legsVisible, setLegsVisible] = useState(false)
     const [trackLegs, setTrackLegs] = useState(true)
     const [scene, setScene] = useState(DEFAULT_SCENE)
+    const [lookAt, setLookAt] = useState(FULLBODY_LOOKAT)
 
     const video = useRef(null)
     const canvas = useRef(null)
@@ -163,7 +166,6 @@ export default function Home() {
                 {/* avatar scene */}
                 <Canvas
                     style={{
-                        zIndex: -1,
                         top: 0,
                         left: 0,
                         width: '100%',
@@ -180,7 +182,7 @@ export default function Home() {
                         trackLegs={trackLegs}
                     />
                     <Environment preset={scene} background={true} />
-                    <OrbitControls />
+                    <Controls lookAt={lookAt} />
                 </Canvas>
                 
                 <Space direction='vertical' align='start'
@@ -191,7 +193,7 @@ export default function Home() {
                     }}
                 >
                     {/* body part tracking selection */}
-                    <Switch checkedChildren="Face" unCheckedChildren="Face" defaultChecked 
+                    <Switch checkedChildren='Face' unCheckedChildren='Face' defaultChecked 
                         onChange={(checked) => {
                             trackFace = checked
                             if (!checked) {
@@ -200,27 +202,37 @@ export default function Home() {
                             }
                         }}
                     />
-                    <Switch checkedChildren="Body" unCheckedChildren="Body" defaultChecked
+                    <Switch checkedChildren='Body' unCheckedChildren='Body' defaultChecked
                         onChange={(checked) => {
                             trackBody = checked
-                            if (!checked) {
+                            if (checked) {
+                                if (trackLegs) {
+                                    setLookAt(FULLBODY_LOOKAT)
+                                } else {
+                                    setLookAt(HALFBODY_LOOKAT)
+                                }
+                            } else {
                                 setBodyLandmarks(null)
                                 resetBody()
                                 resetLegs()
+                                setLookAt(HEADONLY_LOOKAT)
                             }
                         }}
                     />
-                    <Switch checkedChildren="Legs" unCheckedChildren="Legs" defaultChecked
+                    <Switch checkedChildren='Legs' unCheckedChildren='Legs' defaultChecked
                         checked={trackLegs && bodyLandmarks}
                         disabled={!bodyLandmarks}
                         onChange={(checked) => {
                             setTrackLegs(checked)
-                            if (!checked) {
+                            if (checked) {
+                                setLookAt(FULLBODY_LOOKAT)
+                            } else {
                                 resetLegs()
+                                setLookAt(HALFBODY_LOOKAT)
                             }
                         }}
                     />
-                    <Switch checkedChildren="Hands" unCheckedChildren="Hands" defaultChecked
+                    <Switch checkedChildren='Hands' unCheckedChildren='Hands' defaultChecked
                         onChange={(checked) => {
                             trackHands = checked
                             if (!checked) {

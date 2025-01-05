@@ -134,6 +134,6 @@ export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userR
     }
 
     return (
-        <primitive object={nodes.Scene} position={[0, -1, 3.5]} />
+        <primitive object={nodes.Scene} />
     )
 }

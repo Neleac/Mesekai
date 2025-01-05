@@ -93,7 +93,7 @@ export function animateBody(bodyBones, legBones, landmarks, legsVisible, trackLe
     ).multiply(invIdentityMat)
 
     spineEuler.setFromRotationMatrix(shoulderRotMat)
-    spineEuler.set(spineEuler.x / 4, spineEuler.y / 2, spineEuler.z / 2)
+    spineEuler.set(spineEuler.x / 16, spineEuler.y / 2, spineEuler.z / 2)
     spineQuat.setFromEuler(spineEuler)
     bodyBones[0].quaternion.slerp(spineQuat, BODY_SMOOTHING)
     bodyBones[1].quaternion.slerp(spineQuat, BODY_SMOOTHING)

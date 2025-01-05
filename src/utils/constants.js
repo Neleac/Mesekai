@@ -18,6 +18,10 @@ export const SCENES = [
 ]
 export const DEFAULT_SCENE = 'sunset'
 
+export const FULLBODY_LOOKAT = [0, 1, 1.5, 0, 1, 0]
+export const HALFBODY_LOOKAT = [0, 1.5, 0.75, 0, 1.5, 0]
+export const HEADONLY_LOOKAT = [0, 1.8, 0.3, 0, 1.7, 0]
+
 // min landmark visibility to be used for tracking
 export const LM_VIS_THRESH = 0.5
 
