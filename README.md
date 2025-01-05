@@ -19,4 +19,9 @@ This project was built using [NEXT.js](https://nextjs.org). In the project direc
 npm install
 npm run dev
 ```
-Navigate to the localhost URL in browser to view the result.
+Navigate to the localhost URL in browser to view the result. 
+To build for production:
+ ```
+npm run build
+npm run start
+```
