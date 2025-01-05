@@ -27,6 +27,7 @@ import {
     computeAvgLandmarks
 } from '@/utils/tracker'
 import './globals.css'
+import Social from '@/components/social'
 
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
@@ -184,7 +185,7 @@ export default function Home() {
                     <Environment preset={scene} background={true} />
                     <Controls lookAt={lookAt} />
                 </Canvas>
-                
+
                 <Space direction='vertical' align='start'
                     style={{
                         position: 'absolute',
@@ -294,13 +295,15 @@ export default function Home() {
                 size='large'
                 style={{ position: 'absolute', bottom: '1%', left: '1%' }}
             >
-                <Radio.Button value={true} style={{ width: '50%' }}>
+                <Radio.Button value={true} style={{ width: '50%', fontFamily: 'Kristen ITC' }}>
                     Mesekai
                 </Radio.Button>
                 <Radio.Button value={false} style={{ width: '50%' }}>
                     Customize
                 </Radio.Button>
             </Radio.Group>
+
+            <Social />
         </>
     )
 }

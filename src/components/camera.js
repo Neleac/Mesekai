@@ -1,4 +1,4 @@
-import { FloatButton } from 'antd';
+import { FloatButton } from 'antd'
 import { CameraTwoTone, CameraOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 
@@ -12,7 +12,6 @@ export default function CameraDisplay({ video, canvas }){
         <>
             <FloatButton
                 icon={hideCam? <CameraOutlined /> : <CameraTwoTone />}
-                type='default'
                 style={{ position: 'absolute', top: '1%', right: '1%' }}
                 onClick={() => {setHideCam(prevState => !prevState)}}
             />
