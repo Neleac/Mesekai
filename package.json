@@ -1,0 +1,32 @@
+{
+  "name": "mesekai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/holistic": "^0.5.1675471629",
+    "@mediapipe/tasks-vision": "^0.10.15",
+    "@react-three/drei": "^9.112.0",
+    "@react-three/fiber": "^8.17.7",
+    "@readyplayerme/react-avatar-creator": "^0.5.0",
+    "@types/three": "^0.168.0",
+    "antd": "^5.22.7",
+    "next": "^14.2.22",
+    "react": "^18",
+    "react-dom": "^18",
+    "three": "^0.168.0"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "14.2.11",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1"
+  }
+}
