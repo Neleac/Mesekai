@@ -263,6 +263,8 @@ export default function Home() {
                         </Button>
                     </Dropdown>
                 </Space>
+
+                <Social />
             </div>
 
             {!inMesekai && (
@@ -302,8 +304,6 @@ export default function Home() {
                     Customize
                 </Radio.Button>
             </Radio.Group>
-
-            <Social />
         </>
     )
 }

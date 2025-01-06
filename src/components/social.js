@@ -1,4 +1,4 @@
-import { FloatButton, Space } from 'antd';
+import { FloatButton } from 'antd';
 import { GithubOutlined, DiscordOutlined, LinkedinOutlined } from '@ant-design/icons';
 
 export default function Social() {
