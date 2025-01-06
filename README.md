@@ -1,5 +1,9 @@
 # Mesekai - Webcam Motion Tracking Avatar
 
+<center>
+    <img width='100%' alt='demo' src="./mesekai.gif" />
+</center>
+
 [Mesekai](https://mesekai.vercel.app/) is a real-time, full-body, webcam motion tracking avatar web application. Use your body gestures and facial expressions to animate a virtual persona. Personalize your experience through the built-in avatar creator.
 
 ## Tech Stack
@@ -20,6 +24,15 @@ npm run dev
 ```
 3. Navigate to [http://localhost:3000](http://localhost:3000) to see the result
 
+## Roadmap
+Mesekai is an evolving project. If you would like to contribute, please create Issues, Pull Requests, or [reach out to me](https://discordapp.com/users/297770280863137802) directly.
+- [ ] improve forearm rotation
+- [ ] add root bone translation
+- [ ] handle extra shoulder bone
+- [ ] implement loading UI
+- [ ] expose smoothing weight to user
+- [ ] allow pose estimation model selection
+
 ## Other Versions
-- Legacy version: [Website](https://mesekai-ygdz-git-legacy-neleacs-projects.vercel.app/), [Code](https://github.com/Neleac/Mesekai/tree/legacy)
-- Unity version: [itch.io](https://neleac.itch.io/mesekai), [Code](https://github.com/Neleac/MesekaiUnity)
+- Legacy version: [website](https://mesekai-ygdz-git-legacy-neleacs-projects.vercel.app/), [code](https://github.com/Neleac/Mesekai/tree/legacy)
+- Unity version: [itch.io](https://neleac.itch.io/mesekai), [code](https://github.com/Neleac/MesekaiUnity)
