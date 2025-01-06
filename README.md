@@ -1,8 +1,7 @@
-# Mesekai - Webcam Motion Tracking Avatar
-
-<center>
-    <img width='100%' alt='demo' src="./mesekai.gif" />
-</center>
+<h1 align='center'> Mesekai - Webcam Motion Tracking Avatar </h1>
+<p align='center'>
+    <img width='50%' alt='demo' src="./mesekai.gif" />
+</p>
 
 [Mesekai](https://mesekai.vercel.app/) is a real-time, full-body, webcam motion tracking avatar web application. Use your body gestures and facial expressions to animate a virtual persona. Personalize your experience through the built-in avatar creator.
 
