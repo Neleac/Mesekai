@@ -26,12 +26,12 @@ npm run dev
 
 ## Roadmap
 Mesekai is an evolving project. If you would like to contribute, please create Issues, Pull Requests, or [reach out to me](https://discordapp.com/users/297770280863137802) directly.
-- [ ] improve forearm rotation
+- [ ] improve hand gestures
+- [ ] correct wrist/forearm rotation
 - [ ] add root bone translation
 - [ ] handle extra shoulder bone
+- [ ] improve smoothing, reduce jitter
 - [ ] implement loading UI
-- [ ] expose smoothing weight to user
-- [ ] allow pose estimation model selection
 
 ## Other Versions
 - Legacy version: [website](https://mesekai-ygdz-git-legacy-neleacs-projects.vercel.app/), [code](https://github.com/Neleac/Mesekai/tree/legacy)
