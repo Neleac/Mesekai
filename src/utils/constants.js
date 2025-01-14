@@ -25,16 +25,14 @@ export const HEADONLY_LOOKAT = [0, 1.8, 0.3, 0, 1.7, 0]
 // min landmark visibility to be used for tracking
 export const LM_VIS_THRESH = 0.5
 
-// number of frames to average (smooths landmarks)
-// lower = more responsive, higher = smoother
-export const BODY_SMOOTHING_FRAMES = 8
-export const HAND_SMOOTHING_FRAMES = 8
-
-// spherical interpolation factor (smooths rotations)
-// lower = smoother, higher = more responsive
+// smoothing factors, lower = smooth, higher = responsive
+export const BODY_minCutOff = 0.01
+export const BODY_Beta = 0.05
+export const BODY_dCutOff = 1
+export const HAND_minCutOff = 0.001
+export const HAND_Beta = 0.3
+export const HAND_dCutOff = 1
 export const HEAD_SMOOTHING = 0.75
-export const BODY_SMOOTHING = 0.5
-export const HAND_SMOOTHING = 0.95
 
 // landmark indices
 export const lSHOULDER = 11

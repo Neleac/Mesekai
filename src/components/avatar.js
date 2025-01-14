@@ -109,8 +109,7 @@ export default function Avatar({ avatarUrl, userFace, userBody, userLHand, userR
         }
     }
 
-    // set rotations based on tracking result, or reset to default
-    // TODO: don't reset to default every render
+    // set rotations based on tracking result
     if (userFace) {
         if (userFace.faceBlendshapes && userFace.faceBlendshapes.length > 0) {
             animateFace(meshes, userFace.faceBlendshapes[0].categories)

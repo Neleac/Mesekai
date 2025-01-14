@@ -1,10 +1,9 @@
 import { Euler, Matrix4, Quaternion, Vector3, Matrix3, MathUtils } from 'three'
 
-import { 
-    HEAD_SMOOTHING, BODY_SMOOTHING, HAND_SMOOTHING,
+import {
     lSHOULDER, rSHOULDER, lELBOW, rELBOW, lWRIST, rWRIST, lPINKY, rPINKY, lINDEX, rINDEX,
     lHIP, rHIP, lKNEE, rKNEE, lANKLE, rANKLE, lHEEL, rHEEL,
-    WRIST, INDEX, MIDDLE, PINKY, FINGERS
+    WRIST, INDEX, MIDDLE, PINKY, FINGERS, HEAD_SMOOTHING
 } from '@/utils/constants'
 
 
@@ -95,45 +94,45 @@ export function animateBody(bodyBones, legBones, landmarks, legsVisible, trackLe
     spineEuler.setFromRotationMatrix(shoulderRotMat)
     spineEuler.set(spineEuler.x / 16, spineEuler.y / 2, spineEuler.z / 2)
     spineQuat.setFromEuler(spineEuler)
-    bodyBones[0].quaternion.slerp(spineQuat, BODY_SMOOTHING)
-    bodyBones[1].quaternion.slerp(spineQuat, BODY_SMOOTHING)
+    bodyBones[0].quaternion.copy(spineQuat)
+    bodyBones[1].quaternion.copy(spineQuat)
 
     // user left arm, avatar right arm
     createShoulderAxes(poseLms[rSHOULDER], poseLms[lSHOULDER])
-    solveRotation(bodyBones[2], poseLms[lSHOULDER], poseLms[lELBOW], BODY_SMOOTHING)
+    solveRotation(bodyBones[2], poseLms[lSHOULDER], poseLms[lELBOW])
     updateAxes()
-    solveRotation(bodyBones[3], poseLms[lELBOW], poseLms[lWRIST], BODY_SMOOTHING)
+    solveRotation(bodyBones[3], poseLms[lELBOW], poseLms[lWRIST])
     poseLms[lINDEX].lerp(poseLms[lPINKY], 0.5)
     updateAxes()
-    solveRotation(bodyBones[4], poseLms[lWRIST], poseLms[lINDEX], BODY_SMOOTHING)
+    solveRotation(bodyBones[4], poseLms[lWRIST], poseLms[lINDEX])
 
     // user right arm, avatar left arm
     createShoulderAxes(poseLms[lSHOULDER], poseLms[rSHOULDER])
-    solveRotation(bodyBones[5], poseLms[rSHOULDER], poseLms[rELBOW], BODY_SMOOTHING)
+    solveRotation(bodyBones[5], poseLms[rSHOULDER], poseLms[rELBOW])
     updateAxes()
-    solveRotation(bodyBones[6], poseLms[rELBOW], poseLms[rWRIST], BODY_SMOOTHING)
+    solveRotation(bodyBones[6], poseLms[rELBOW], poseLms[rWRIST])
     poseLms[rINDEX].lerp(poseLms[rPINKY], 0.5)
     updateAxes()
-    solveRotation(bodyBones[7], poseLms[rWRIST], poseLms[rINDEX], BODY_SMOOTHING)
+    solveRotation(bodyBones[7], poseLms[rWRIST], poseLms[rINDEX])
 
     // TODO: wrist rotation (forearm twist)
 
     if (legsVisible && trackLegs) {
         // user left leg, avatar right leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
-        solveRotation(legBones[0], poseLms[lHIP], poseLms[lKNEE], BODY_SMOOTHING, true)
+        solveRotation(legBones[0], poseLms[lHIP], poseLms[lKNEE], true)
         updateAxes()
-        solveRotation(legBones[1], poseLms[lKNEE], poseLms[lANKLE], BODY_SMOOTHING)
+        solveRotation(legBones[1], poseLms[lKNEE], poseLms[lANKLE])
         updateAxes()
-        solveRotation(legBones[2], poseLms[lANKLE], poseLms[lHEEL], BODY_SMOOTHING)
+        solveRotation(legBones[2], poseLms[lANKLE], poseLms[lHEEL])
 
         // user right leg, avatar left leg
         createHipAxes(poseLms[lHIP], poseLms[rHIP])
-        solveRotation(legBones[3], poseLms[rHIP], poseLms[rKNEE], BODY_SMOOTHING, true)
+        solveRotation(legBones[3], poseLms[rHIP], poseLms[rKNEE], true)
         updateAxes()
-        solveRotation(legBones[4], poseLms[rKNEE], poseLms[rANKLE], BODY_SMOOTHING)
+        solveRotation(legBones[4], poseLms[rKNEE], poseLms[rANKLE])
         updateAxes()
-        solveRotation(legBones[5], poseLms[rANKLE], poseLms[rHEEL], BODY_SMOOTHING)
+        solveRotation(legBones[5], poseLms[rANKLE], poseLms[rHEEL])
     } else {
         // reset legs if not detected
         resetRotations(legBones, defaultLegQuats)
@@ -210,7 +209,7 @@ function updateAxes() {
 }
 
 
-function solveRotation(avatarBone, parentLm, childLm, smoothing, isHip=false) {
+function solveRotation(avatarBone, parentLm, childLm, isHip=false) {
     userLimbWorld.copy(childLm.clone().sub(parentLm)).normalize()
     userLimbLocal.copy(userLimbWorld).applyMatrix3(axes.invert()).normalize()
     rotLocal.setFromUnitVectors(avatarLimbLocal, userLimbLocal)
@@ -220,7 +219,7 @@ function solveRotation(avatarBone, parentLm, childLm, smoothing, isHip=false) {
         rotLocal.multiplyQuaternions(zRotQuat, rotLocal)
     }
 
-    avatarBone.quaternion.slerp(rotLocal, smoothing)
+    avatarBone.quaternion.copy(rotLocal)
 }
 
 
@@ -244,7 +243,7 @@ function solveHand(avatarWristBone, handedness) {
         // solve and apply finger rotations
         let avatarBone = avatarWristBone.children[fingerIdx]
         for (let landmarkIdx = FINGERS[fingerIdx]; ; landmarkIdx++) {
-            solveRotation(avatarBone, handLms[landmarkIdx], handLms[landmarkIdx + 1], HAND_SMOOTHING)
+            solveRotation(avatarBone, handLms[landmarkIdx], handLms[landmarkIdx + 1])
             
             // rotation constraints, TODO: thumbs
             avatarBone.rotation.y = 0

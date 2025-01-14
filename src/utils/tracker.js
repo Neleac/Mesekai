@@ -74,21 +74,3 @@ export function drawHandLandmarks(landmarks, drawingUtils, landmarkRadius, lineW
         drawingUtils.drawConnectors(handLandmarks, HandLandmarker.HAND_CONNECTIONS, { color: 'lime', lineWidth: lineWidth })
     }
 }
-
-// given array of shape (nFrames, nLandmarks), modifies index 0 to be the average of all frames
-export function computeAvgLandmarks(landmarksFrames) {
-    for (let frameIdx = 1; frameIdx < landmarksFrames.length; frameIdx++) {
-        for (let landmarkIdx = 0; landmarkIdx < landmarksFrames[frameIdx].length; landmarkIdx++) {
-            const landmark = landmarksFrames[frameIdx][landmarkIdx]
-            landmarksFrames[0][landmarkIdx].x += landmark.x
-            landmarksFrames[0][landmarkIdx].y += landmark.y
-            landmarksFrames[0][landmarkIdx].z += landmark.z
-        }
-    }
-
-    for (let landmarkIdx = 0; landmarkIdx < landmarksFrames[0].length; landmarkIdx++) {
-        landmarksFrames[0][landmarkIdx].x /= landmarksFrames.length
-        landmarksFrames[0][landmarkIdx].y /= landmarksFrames.length
-        landmarksFrames[0][landmarkIdx].z /= landmarksFrames.length
-    }
-}

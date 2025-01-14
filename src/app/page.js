@@ -16,18 +16,20 @@ import Controls from '@/components/controls'
 import { 
     CAM_WIDTH, CAM_HEIGHT, SCENES, DEFAULT_SCENE, 
     FULLBODY_LOOKAT, HALFBODY_LOOKAT, HEADONLY_LOOKAT, 
-    LM_VIS_THRESH, lHIP, rHIP, 
-    BODY_SMOOTHING_FRAMES, HAND_SMOOTHING_FRAMES
+    LM_VIS_THRESH, lHIP, rHIP,
+    BODY_minCutOff, BODY_Beta, BODY_dCutOff,
+    HAND_minCutOff, HAND_Beta, HAND_dCutOff
 } from '@/utils/constants'
+import OneEuroFilter from '@/utils/one-euro-filter'
 import {
     createTrackers,
     drawFaceLandmarks,
     drawBodyLandmarks,
-    drawHandLandmarks,
-    computeAvgLandmarks
+    drawHandLandmarks
 } from '@/utils/tracker'
 import './globals.css'
 import Social from '@/components/social'
+
 
 let trackersCreated = false
 let faceTracker, bodyTracker, handTracker
@@ -36,9 +38,9 @@ let trackFace = true
 let trackBody = true
 let trackHands = true
 
-const bodyFrames = []
-const lHandFrames = []
-const rHandFrames = []
+const bodyFilter = new OneEuroFilter(33, BODY_minCutOff, BODY_Beta, BODY_dCutOff)
+const lHandFilter = new OneEuroFilter(21, HAND_minCutOff, HAND_Beta, HAND_dCutOff)
+const rHandFilter = new OneEuroFilter(21, HAND_minCutOff, HAND_Beta, HAND_dCutOff)
 
 
 function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, setlHandLandmarks, setrHandLandmarks, setLegsVisible) {    
@@ -57,15 +59,11 @@ function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, s
 
         // animate avatar
         if (trackingResult.worldLandmarks && trackingResult.worldLandmarks.length > 0) {
-            const landmarks = trackingResult.worldLandmarks[0]
-            bodyFrames.push(landmarks)
+            let landmarks = trackingResult.worldLandmarks[0]
+            setLegsVisible(landmarks[lHIP].visibility > LM_VIS_THRESH && landmarks[rHIP].visibility > LM_VIS_THRESH)
 
-            if (bodyFrames.length == BODY_SMOOTHING_FRAMES) {
-                computeAvgLandmarks(bodyFrames)
-                setBodyLandmarks(bodyFrames[0])
-                bodyFrames.shift()
-                setLegsVisible(landmarks[lHIP].visibility > LM_VIS_THRESH && landmarks[rHIP].visibility > LM_VIS_THRESH)
-            }
+            landmarks = bodyFilter.filter(landmarks, frame.currentTime)
+            setBodyLandmarks(landmarks)
         }
 
         // draw video overlay
@@ -77,19 +75,14 @@ function processFrame(frame, drawingUtils, setFaceLandmarks, setBodyLandmarks, s
         
         // animate avatar
         for (let handIdx = 0; handIdx < trackingResult.handedness.length; handIdx++) {
+            let landmarks = trackingResult.worldLandmarks[handIdx]
             const handedness = trackingResult.handedness[handIdx][0]['categoryName']
-            const handFrames = (handedness == 'Left') ? lHandFrames : rHandFrames
-            const landmarks = trackingResult.worldLandmarks[handIdx]
-            handFrames.push(landmarks)
-
-            if (handFrames.length == HAND_SMOOTHING_FRAMES) {
-                computeAvgLandmarks(handFrames)
-                if (handedness == 'Left') {
-                    setlHandLandmarks(handFrames[0])
-                } else {
-                    setrHandLandmarks(handFrames[0])
-                }
-                handFrames.shift()
+            if (handedness == 'Left') {
+                landmarks = lHandFilter.filter(landmarks, frame.currentTime)
+                setlHandLandmarks(landmarks)
+            } else {
+                landmarks = rHandFilter.filter(landmarks, frame.currentTime)
+                setrHandLandmarks(landmarks)
             }
         }
 
@@ -132,7 +125,8 @@ export default function Home() {
                     canvasCtx.save()
                     canvasCtx.clearRect(0, 0, canvas.current.width, canvas.current.height)
                     processFrame(
-                        video.current, drawingUtils, 
+                        video.current, 
+                        drawingUtils, 
                         setFaceLandmarks, 
                         setBodyLandmarks, 
                         setlHandLandmarks, 
