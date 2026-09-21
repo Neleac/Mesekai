@@ -6,6 +6,9 @@
 
 [Mesekai](https://mesekai.vercel.app/) is a real-time, full-body, webcam motion tracking avatar web application. Use your body gestures and facial expressions to animate a virtual persona. Personalize your experience through the built-in avatar creator.
 
+## Annoucement
+The app no longer works after Netflix acquired Ready Player Me and shutdown the avatar API. The underlying kinematics solver can be reused for other avatar formats. I welcome contributions for migrating to alternative avatar SDKs.
+
 ## Tech Stack
 - [Ready Player Me](https://readyplayer.me/) - avatar and avatar creator
 - [MediaPipe](https://ai.google.dev/edge/mediapipe/) - face, hands, and body pose estimation
@@ -26,6 +29,7 @@ npm run dev
 
 ## Roadmap
 Mesekai is an evolving project. If you would like to contribute, please create Issues, Pull Requests, or [reach out to me](https://discordapp.com/users/297770280863137802) directly.
+- [ ] migrate to alternative avatar SDK
 - [ ] improve hand gestures
 - [ ] correct wrist/forearm rotation
 - [ ] add root bone translation
@@ -34,5 +38,5 @@ Mesekai is an evolving project. If you would like to contribute, please create I
 - [ ] implement loading UI
 
 ## Other Versions
-- Legacy version: [website](https://mesekai-ygdz-git-legacy-neleacs-projects.vercel.app/), [code](https://github.com/Neleac/Mesekai/tree/legacy)
+- Legacy version: [website](https://mesekai-neleac.vercel.app/), [code](https://github.com/Neleac/Mesekai/tree/legacy)
 - Unity version: [itch.io](https://neleac.itch.io/mesekai), [code](https://github.com/Neleac/MesekaiUnity)
